@@ -1,0 +1,1739 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, useEffect } from 'react';
+import { 
+  Users, 
+  GraduationCap, 
+  BookOpen, 
+  MessageSquare, 
+  Calendar, 
+  Settings, 
+  Home, 
+  Library, 
+  Package, 
+  DollarSign, 
+  Image as ImageIcon,
+  CheckCircle2,
+  Bell,
+  Search,
+  PlusCircle,
+  Menu,
+  X,
+  ClipboardList,
+  Printer,
+  Trash2,
+  ChevronRight,
+  ShieldCheck
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Student, Teacher, Announcement, DirectiveMember } from './types';
+import FinanceView from './components/FinanceView';
+import LibraryView from './components/LibraryView';
+import GradesView from './components/GradesView';
+import CarneView from './components/CarneView';
+import EADPortal from './components/EADPortal';
+import { jsPDF } from 'jspdf';
+import { supabase } from './lib/supabase';
+
+// Theme Colors
+const colors = {
+  primary: '#4FC3F7',
+  primaryBorder: '#0288D1',
+  secondary: '#FF8A65',
+  secondaryBorder: '#D84315',
+  success: '#81C784',
+  successBorder: '#388E3C',
+  warning: '#FFF176',
+  warningBorder: '#FBC02D',
+  accent: '#FF5252',
+  accentBorder: '#D50000',
+  bg: '#E1F5FE',
+  white: '#FFFFFF',
+};
+
+type View = 'dashboard' | 'students' | 'teachers' | 'grades' | 'communication' | 'library' | 'financial' | 'carne' | 'ead' | 'inventory' | 'photos' | 'attendance' | 'classes' | 'directive' | 'settings';
+
+export default function App() {
+  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [schoolInfo, setSchoolInfo] = useState({
+    name: 'Escola Mágica Primeiras Descobertas',
+    address: 'Rua da Alegria, 123 - Bairro Feliz, São Paulo - SP',
+    cnpj: '00.000.000/0001-00',
+    phone: '(11) 98765-4321',
+    email: 'contato@escolamagica.com.br',
+    director: 'Prof. Carlos Alberto',
+    logoUrl: 'https://cdn-icons-png.flaticon.com/512/3481/3481061.png',
+    primaryColor: '#4FC3F7',
+    passingGrade: 7.0,
+    contractTemplate: 'Declaramos para os devidos fins que o(a) aluno(a) acima identificado(a) encontra-se devidamente matriculado(a) nesta instituição de ensino para o ano letivo corrente.'
+  });
+  const [directiveMembers, setDirectiveMembers] = useState<DirectiveMember[]>([
+    { id: 'd1', name: 'Dr. Roberto', role: 'Diretor Geral', email: 'roberto@escola.com' },
+    { id: 'd2', name: 'Dra. Silvana', role: 'Diretora Acadêmica', email: 'silvana@escola.com' },
+  ]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [classes, setClasses] = useState([
+    { id: '1', name: 'G 3 - Matutino', teacher: 'Prof. Márcia', students: 3, color: '#FF8A65', border: '#D84315', icon: '🦁' },
+    { id: '2', name: 'G 4', teacher: 'Prof. Ricardo', students: 1, color: '#4FC3F7', border: '#0288D1', icon: '🐳' },
+    { id: '3', name: 'G 5 - Matutino', teacher: 'Profª. Ana', students: 5, color: '#FFF176', border: '#FBC02D', icon: '🦊' },
+    { id: '4', name: '1º Ano', teacher: 'Prof. João', students: 8, color: '#81C784', border: '#388E3C', icon: '🐸' },
+    { id: '5', name: '2º Ano', teacher: 'Profª. Clara', students: 7, color: '#FF5252', border: '#D50000', icon: '🐞' },
+    { id: '6', name: '4º Ano', teacher: 'Prof. Pedro', students: 7, color: '#4FC3F7', border: '#0288D1', icon: '🦉' },
+    { id: '7', name: '5º Ano', teacher: 'Profª. Sônia', students: 15, color: '#FF8A65', border: '#D84315', icon: '🦁' },
+  ]);
+  const [inventory, setInventory] = useState([
+    { id: '1', name: 'Giz Colorido', stock: 45, min: 20, unit: 'Caixas', icon: '🖍️' },
+    { id: '2', name: 'Papel A4', stock: 12, min: 25, unit: 'Resmas', icon: '📄' },
+    { id: '3', name: 'Lápis de Cor', stock: 120, min: 50, unit: 'Unidades', icon: '✏️' },
+    { id: '4', name: 'Borracha', stock: 8, min: 15, unit: 'Unidades', icon: '🧼' },
+  ]);
+  const [albums, setAlbums] = useState([
+    { id: '1', title: 'Festa da Primavera 🌸', count: 42, date: 'Setembro 2024', cover: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400&q=80' },
+    { id: '2', title: 'Passeio ao Zoológico 🦁', count: 128, date: 'Agosto 2024', cover: 'https://images.unsplash.com/photo-1544367567-0f2fe5509f71?w=400&q=80' },
+    { id: '3', title: 'Semana de Artes 🎨', count: 56, date: 'Julho 2024', cover: 'https://images.unsplash.com/photo-1513364235703-01308a0d4cbb?w=400&q=80' },
+  ]);
+  const [financialRecords, setFinancialRecords] = useState([
+    { id: 'f1', studentId: '1', type: 'tuition', amount: 850.00, dueDate: '2024-10-10', status: 'paid' },
+    { id: 'f2', studentId: '1', type: 'tuition', amount: 850.00, dueDate: '2024-11-10', status: 'pending' },
+    { id: 'f3', studentId: '2', type: 'fee', amount: 150.00, dueDate: '2024-10-05', status: 'overdue' },
+  ]);
+  const [libraryBooks, setLibraryBooks] = useState([
+    { id: 'b1', title: 'O Pequeno Príncipe', author: 'Antoine de Saint-Exupéry', category: 'Infantil', available: true },
+    { id: 'b2', title: 'Dom Casmurro', author: 'Machado de Assis', category: 'Literatura', available: false, loanedTo: 'Pedro Silva', dueDate: '2024-10-20' },
+    { id: 'b3', title: 'Harry Potter e a Pedra Filosofal', author: 'J.K. Rowling', category: 'Fantasia', available: true },
+  ]);
+
+  useEffect(() => {
+    async function loadData() {
+      const { data: studentData } = await supabase.from('students').select('*');
+      if (studentData) setStudents(studentData as any);
+
+      const { data: teacherData } = await supabase.from('teachers').select('*');
+      if (teacherData) setTeachers(teacherData as any);
+
+      const { data: announcementData } = await supabase.from('announcements').select('*');
+      if (announcementData) setAnnouncements(announcementData as any);
+      
+      const { data: classesData } = await supabase.from('classes').select('*');
+      if (classesData) setClasses(classesData as any);
+    }
+    loadData();
+  }, []);
+
+  const menuItems = [
+    { id: 'dashboard', label: 'Início', icon: Home, color: '#4FC3F7', emoji: '🏠' },
+    { id: 'students', label: 'Alunos', icon: Users, color: '#FF8A65', emoji: '🎒' },
+    { id: 'classes', label: 'Turmas', icon: Users, color: '#4FC3F7', emoji: '🏫' },
+    { id: 'attendance', label: 'Chamada', icon: ClipboardList, color: '#81C784', emoji: '📝' },
+    { id: 'teachers', label: 'Professores', icon: GraduationCap, color: '#FFF176', emoji: '🍎' },
+    { id: 'grades', label: 'Notas', icon: CheckCircle2, color: '#FF5252', emoji: '⭐' },
+    { id: 'communication', label: 'Recados', icon: MessageSquare, color: '#FF8A65', emoji: '📌' },
+    { id: 'library', label: 'Biblioteca', icon: Library, color: '#4FC3F7', emoji: '📚' },
+    { id: 'financial', label: 'Financeiro', icon: DollarSign, color: '#FFF176', emoji: '💰' },
+    { id: 'carne', label: 'Gerar Carnê', icon: Printer, color: '#FF8A65', emoji: '🎫' },
+    { id: 'ead', label: 'EAD', icon: BookOpen, color: '#FF5252', emoji: '💻' },
+    { id: 'inventory', label: 'Estoque', icon: Package, color: '#81C784', emoji: '📦' },
+    { id: 'photos', label: 'Fotos', icon: ImageIcon, color: '#FF8A65', emoji: '🖼️' },
+    { id: 'directive', label: 'Diretoria', icon: ShieldCheck, color: '#4FC3F7', emoji: '👔' },
+    { id: 'settings', label: 'Configurações', icon: Settings, color: '#78909C', emoji: '⚙️' },
+  ];
+
+  return (
+    <div className="min-h-screen flex text-gray-800 font-sans overflow-hidden print:block print:bg-white" style={{ backgroundColor: colors.bg }}>
+      {/* Sidebar */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.aside 
+            initial={{ x: -300 }}
+            animate={{ x: 0 }}
+            exit={{ x: -250 }}
+            className="w-64 bg-white border-r-8 border-[#4FC3F7] shadow-xl flex flex-col z-20 print:hidden"
+          >
+            <div className="p-6 flex items-center gap-3 border-b-4 border-[#E1F5FE]">
+              <div className="w-12 h-12 bg-[#4FC3F7] rounded-2xl flex items-center justify-center shadow-md border-b-4 border-[#0288D1]">
+                <GraduationCap className="text-white w-7 h-7" />
+              </div>
+              <h1 className="font-black text-xl tracking-tight text-[#01579B]">Escola Mágica</h1>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-3">
+              <p className="text-[#0288D1] font-black uppercase text-[10px] tracking-widest mb-2 px-2">Menu Principal</p>
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id as View)}
+                  className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 border-2 ${
+                    currentView === item.id 
+                    ? 'bg-[#E1F5FE] text-[#0277BD] border-[#4FC3F7] font-black shadow-sm' 
+                    : 'hover:bg-gray-50 text-[#78909C] border-transparent'
+                  }`}
+                >
+                  <span className="text-2xl">{item.emoji}</span>
+                  <span className="text-sm">{item.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            <div className="p-4 border-t-4 border-[#E1F5FE]">
+              <div className="p-4 bg-[#FFF9C4] rounded-2xl border-2 border-[#FBC02D]">
+                <p className="text-[10px] font-black text-[#F57F17] mb-2 uppercase">Capacidade</p>
+                <div className="h-3 bg-white rounded-full overflow-hidden">
+                  <div className="h-full bg-[#81C784] w-[85%]"></div>
+                </div>
+                <p className="text-[9px] text-[#F57F17] mt-1 text-center font-bold">185 / 220 Alunos</p>
+              </div>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col overflow-hidden print:block print:overflow-visible">
+        {/* Header */}
+        <header className="h-20 bg-[#4FC3F7] px-8 flex items-center justify-between border-b-8 border-[#0288D1] shrink-0 shadow-lg print:hidden">
+          <div className="flex items-center gap-6">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-white/20 hover:bg-white/30 rounded-xl text-white transition-all">
+              {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
+              <input 
+                type="text" 
+                placeholder="Procurar..." 
+                className="pl-10 pr-4 py-2 bg-white/20 border-2 border-white/30 rounded-full w-64 focus:bg-white focus:text-gray-800 transition-all outline-none placeholder:text-white/60 text-white font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6 text-white">
+            <div className="flex gap-2">
+              <button className="bg-[#81C784] hover:bg-white/10 text-white font-black py-2 px-4 rounded-2xl border-b-4 border-[#388E3C] text-sm flex items-center gap-2">
+                <span>📢 Mural</span>
+              </button>
+              <button className="bg-[#FFF176] text-[#5D4037] font-black py-2 px-4 rounded-2xl border-b-4 border-[#FBC02D] text-sm flex items-center gap-2">
+                <span>💰 Caixa</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-3 bg-[#0288D1] p-2 pr-4 rounded-full border-2 border-white/20">
+              <div className="w-10 h-10 bg-white rounded-full border-2 border-[#FFF176] overflow-hidden">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Profile" />
+              </div>
+              <div>
+                <p className="text-xs font-black leading-none italic uppercase underline">Coordenador</p>
+                <p className="font-black text-sm">Prof. Carlos</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-10 print:p-0 print:overflow-visible">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {currentView === 'attendance' && <AttendanceView students={students} />}
+              {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} />}
+              {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
+              {currentView === 'grades' && <GradesView />}
+              {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} />}
+              {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
+              {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} />}
+              {currentView === 'carne' && <CarneView students={students} financialRecords={financialRecords} schoolInfo={schoolInfo} />}
+              {currentView === 'ead' && <EADPortal />}
+              {currentView === 'inventory' && <InventoryView items={inventory} setItems={setInventory} />}
+              {currentView === 'photos' && <PhotosView albums={albums} setAlbums={setAlbums} />}
+              {currentView === 'directive' && <DirectiveView members={directiveMembers} setMembers={setDirectiveMembers} />}
+              {currentView === 'settings' && <SettingsView info={schoolInfo} setInfo={setSchoolInfo} />}
+              {/* Other views */}
+              {false && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                  <div className="p-8 bg-white rounded-3xl shadow-xl mb-4 transform rotate-3">
+                    <Settings className="w-12 h-12 stroke-[1.5]" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-500">Módulo em construção</h3>
+                  <p>Estamos preparando algo incrível para as crianças!</p>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function Dashboard({ students, announcements }: { students: Student[], announcements: Announcement[] }) {
+  return (
+    <div className="space-y-10">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-5xl font-black text-[#01579B]">Painel Geral 🚀</h2>
+          <p className="text-[#546E7A] font-bold text-lg mt-1 italic">Bem-vindo à Escola Mágica da Diversão!</p>
+        </div>
+        <button className="bg-[#FF5252] text-white py-4 px-8 rounded-[32px] border-b-8 border-[#D50000] font-black flex items-center gap-3 shadow-xl transform hover:-translate-y-1 transition-all active:translate-y-1">
+          <span className="text-2xl">💻</span> <span>PORTAL EAD</span>
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {[
+          { label: 'Turminha', count: students.length, color: '#4FC3F7', borderColor: '#0288D1', icon: '🎒', desc: 'Amiguinhos ativos' },
+          { label: 'Hoje na Escola', count: '94%', color: '#81C784', borderColor: '#388E3C', icon: '✅', desc: 'Frequência ideal' },
+          { label: 'Livros de Hist.', count: 12, color: '#FFF176', borderColor: '#FBC02D', icon: '📚', desc: 'Empréstimos' },
+          { label: 'Recadinhos', count: announcements.length, color: '#FF8A65', borderColor: '#D84315', icon: '📌', desc: 'Novos avisos' },
+        ].map((stat, i) => (
+          <div 
+            key={i} 
+            className="rounded-[40px] border-4 p-8 shadow-xl flex flex-col gap-2 relative overflow-hidden group transition-all hover:scale-105"
+            style={{ backgroundColor: stat.color, borderColor: stat.borderColor }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-5xl drop-shadow-md">{stat.icon}</span>
+              <p className="text-white font-black text-xs uppercase tracking-widest bg-black/10 px-3 py-1 rounded-full">{stat.label}</p>
+            </div>
+            <p className="text-4xl font-black text-white mt-4 drop-shadow-sm">{stat.count}</p>
+            <p className="text-white/80 font-bold text-xs">{stat.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* Recent Announcements */}
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white p-8 rounded-[40px] border-4 border-[#FF8A65] shadow-2xl">
+            <div className="flex items-center gap-4 mb-8 border-b-4 border-dashed border-[#FF8A65] pb-6">
+              <span className="text-4xl">📌</span>
+              <h3 className="text-3xl font-black text-[#D84315]">Mural da Bagunça</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {announcements.map(ann => (
+                <div key={ann.id} className="p-6 rounded-[32px] bg-[#FBE9E7] border-l-8 border-[#FF5722] shadow-sm flex flex-col">
+                  <h4 className="font-black text-[#D84315] text-lg mb-2">{ann.title}</h4>
+                  <p className="text-sm text-[#BF360C] font-medium leading-relaxed flex-1">{ann.content}</p>
+                  <p className="text-[10px] text-[#FF5722] mt-4 font-black uppercase tracking-widest bg-white/50 self-start px-3 py-1 rounded-full">{ann.date}</p>
+                </div>
+              ))}
+            </div>
+            <button className="mt-8 w-full py-4 bg-[#FF8A65] text-white rounded-3xl font-black text-lg border-b-8 border-[#D84315] shadow-lg hover:brightness-110 active:translate-y-1 transition-all">VER TODOS OS RECADOS</button>
+          </div>
+        </div>
+
+        {/* Small Widgets */}
+        <div className="space-y-8">
+          <div className="bg-[#4FC3F7] rounded-[40px] border-4 border-[#0288D1] p-8 shadow-2xl flex flex-col gap-4">
+            <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-inner text-5xl">🦁</div>
+            <div>
+              <h3 className="text-3xl font-black text-white leading-tight">Turma Leãozinho</h3>
+              <p className="text-white/80 font-bold mb-4">Veja as fotos do lanche de hoje!</p>
+              <button className="bg-white text-[#0288D1] px-6 py-2 rounded-2xl font-black text-sm border-b-4 border-gray-200">VER ÁLBUM</button>
+            </div>
+          </div>
+
+          <div className="bg-[#FFF176] rounded-[40px] border-4 border-[#FBC02D] p-8 shadow-2xl">
+             <div className="flex items-center gap-4 mb-6">
+                <span className="text-4xl">🍎</span>
+                <h3 className="text-2xl font-black text-[#5D4037]">Professores</h3>
+             </div>
+             <div className="space-y-4">
+                {['Profª. Márcia', 'Prof. Ricardo'].map((t, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-white/50 p-3 rounded-2xl border-b-4 border-[#FBC02D]">
+                    <div className="w-10 h-10 bg-white rounded-full border-2 border-[#FBC02D]" />
+                    <p className="font-black text-[#8D6E63] text-sm">{t}</p>
+                  </div>
+                ))}
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentsView({ students, setStudents, schoolInfo }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any }) {
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsRegistering(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const defaultStudentState = { 
+    name: '', age: '', class: '', guardian: '', 
+    address: '', phone: '', additionalPhone: '', 
+    medication: false, medicationDetails: '', 
+    allergies: false, allergiesDetails: '', 
+    surgery: false, surgeryDetails: '', 
+    neurodivergent: false, neurodivergentReport: false 
+  };
+  const [newStudent, setNewStudent] = useState(defaultStudentState);
+
+  const handleRegister = (e: any) => {
+    e.preventDefault();
+    const student = { 
+      ...newStudent, 
+      id: editingId || (students.length + 1).toString(), 
+      grade: 'Novo', 
+      turma: newStudent.class,
+      parentContact: newStudent.phone,
+      parentName: newStudent.guardian,
+      continuousMedication: newStudent.medication,
+      continuousMedicationDetails: newStudent.medicationDetails,
+      allergiesDetails: newStudent.allergiesDetails,
+      surgeryDetails: newStudent.surgeryDetails
+    };
+    
+    if (editingId) {
+      setStudents(students.map(s => s.id === editingId ? student as any : s));
+    } else {
+      setStudents([...students, student as any]);
+    }
+    
+    setIsRegistering(false);
+    setEditingId(null);
+    setNewStudent(defaultStudentState);
+  };
+
+  const handleEdit = (student: any) => {
+    setNewStudent({
+      ...defaultStudentState,
+      name: student.name,
+      class: student.turma,
+      guardian: student.parentName,
+      phone: student.parentContact,
+      address: student.address || '',
+      additionalPhone: student.additionalPhone || '',
+      medication: student.continuousMedication || false,
+      medicationDetails: student.continuousMedicationDetails || '',
+      allergies: student.allergies || false,
+      allergiesDetails: student.allergiesDetails || '',
+      surgery: student.surgery || false,
+      surgeryDetails: student.surgeryDetails || '',
+      neurodivergent: student.neurodivergent || false,
+      neurodivergentReport: student.neurodivergentReport || false,
+    });
+    setEditingId(student.id);
+    setIsRegistering(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setStudents(students.filter(s => s.id !== id));
+    setDeletingId(null);
+  };
+
+  const generatePDF = (student: Student) => {
+    const doc = new jsPDF();
+    const today = new Date().toLocaleDateString('pt-BR');
+    
+    // Header
+    doc.setFillColor(schoolInfo.primaryColor);
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text(schoolInfo.name.toUpperCase(), 105, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${schoolInfo.address} | Tel: ${schoolInfo.phone}`, 105, 30, { align: 'center' });
+    doc.text(`CNPJ: ${schoolInfo.cnpj} | Email: ${schoolInfo.email}`, 105, 35, { align: 'center' });
+
+    // Title
+    doc.setTextColor(1, 87, 155); // Dark blue
+    doc.setFontSize(26);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COMPROVANTE DE MATRÍCULA', 105, 60, { align: 'center' });
+    
+    // Decorative Line
+    doc.setDrawColor(79, 195, 247);
+    doc.setLineWidth(1);
+    doc.line(40, 65, 170, 65);
+
+    // Body
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    
+    const startY = 85;
+    const spacing = 12;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('DADOS DO ALUNO', 20, startY - 10);
+    doc.setLineWidth(0.5);
+    doc.line(20, startY - 7, 190, startY - 7);
+
+    doc.setFont('helvetica', 'bold'); doc.text('Nome Completo:', 20, startY);
+    doc.setFont('helvetica', 'normal'); doc.text(student.name, 60, startY);
+
+    doc.setFont('helvetica', 'bold'); doc.text('Série / Turma:', 20, startY + spacing);
+    doc.setFont('helvetica', 'normal'); doc.text(`${student.grade} • ${student.turma}`, 60, startY + spacing);
+
+    doc.setFont('helvetica', 'bold'); doc.text('Responsável:', 20, startY + spacing * 2);
+    doc.setFont('helvetica', 'normal'); doc.text(student.parentName || '---', 60, startY + spacing * 2);
+
+    doc.setFont('helvetica', 'bold'); doc.text('Contato:', 20, startY + spacing * 3);
+    doc.setFont('helvetica', 'normal'); doc.text(student.parentContact || '---', 60, startY + spacing * 3);
+
+    // Declaration
+    const text = schoolInfo.contractTemplate;
+    const splitText = doc.splitTextToSize(text, 170);
+    doc.text(splitText, 20, startY + spacing * 5);
+
+    // Date
+    doc.text(`Emitido em: ${today}`, 20, 200);
+
+    // Signature
+    doc.line(60, 240, 150, 240);
+    doc.setFontSize(10);
+    doc.text(schoolInfo.director, 105, 245, { align: 'center' });
+    doc.text('Diretoria Geral', 105, 250, { align: 'center' });
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Documento gerado eletronicamente pelo Sistema Escola Mágica.', 105, 285, { align: 'center' });
+
+    doc.save(`Comprovante_${student.name.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  const openNewRegistration = () => {
+    setEditingId(null);
+    setNewStudent(defaultStudentState);
+    setIsRegistering(true);
+  };
+
+  return (
+    <div className="space-y-10">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#01579B]">Exploradores 🎒</h2>
+          <p className="text-[#546E7A] font-bold">Nossa turminha de aventureiros!</p>
+        </div>
+        <button 
+          onClick={openNewRegistration}
+          className="px-8 py-4 bg-[#FF8A65] text-white rounded-[32px] font-black border-b-8 border-[#D84315] shadow-xl flex items-center gap-3 transform hover:scale-105 transition-all"
+        >
+          <PlusCircle className="w-6 h-6" />
+          <span>MATRICULAR ALUNO</span>
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Remover Amiguinho?"
+            message="Tem certeza que deseja remover este pequeno aventureiro da turma?"
+            confirmText="SIM, REMOVER"
+            cancelText="NÃO, MANTER"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isRegistering && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-[56px] border-8 border-[#FF8A65] p-10 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF8A65]/10 rounded-full translate-x-12 -translate-y-12" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-8">
+                   <div className="w-16 h-16 bg-[#FFF176] rounded-3xl border-4 border-[#FBC02D] flex items-center justify-center text-4xl shadow-inner">🧸</div>
+                   <h3 className="text-3xl font-black text-[#D84315] uppercase italic">{editingId ? 'Editar Aluno' : 'Nova Matrícula'}</h3>
+                </div>
+
+                <form onSubmit={handleRegister} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Nome do Pequeno</label>
+                    <input 
+                      required
+                      value={newStudent.name}
+                      onChange={e => setNewStudent({...newStudent, name: e.target.value})}
+                      className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                      placeholder="Ex: Joãozinho Silva"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Idade</label>
+                      <input 
+                        required
+                        type="number"
+                        value={newStudent.age}
+                        onChange={e => setNewStudent({...newStudent, age: e.target.value})}
+                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                        placeholder="7"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Turma</label>
+                      <input 
+                        required
+                        value={newStudent.class}
+                        onChange={e => setNewStudent({...newStudent, class: e.target.value})}
+                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                        placeholder="Ex: 2º Ano A"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Responsável</label>
+                    <input 
+                      required
+                      value={newStudent.guardian}
+                      onChange={e => setNewStudent({...newStudent, guardian: e.target.value})}
+                      className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                      placeholder="Nome do Papai ou Mamãe"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Endereço</label>
+                    <input 
+                      required
+                      value={newStudent.address}
+                      onChange={e => setNewStudent({...newStudent, address: e.target.value})}
+                      className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                      placeholder="Rua, Número, Bairro"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Telefone</label>
+                      <input 
+                        required
+                        value={newStudent.phone}
+                        onChange={e => setNewStudent({...newStudent, phone: e.target.value})}
+                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Tel. Adicional</label>
+                      <input 
+                        value={newStudent.additionalPhone}
+                        onChange={e => setNewStudent({...newStudent, additionalPhone: e.target.value})}
+                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Saúde e Cuidados */}
+                  <div className="pt-4 pb-2 border-t-4 border-dashed border-[#E1F5FE]">
+                    <h4 className="text-lg font-black text-[#01579B]">Ficha Médica 🩺</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
+                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
+                        <input type="checkbox" checked={newStudent.medication} onChange={e => setNewStudent({...newStudent, medication: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
+                        Usa Medicamento?
+                      </label>
+                      {newStudent.medication && (
+                        <input required value={newStudent.medicationDetails} onChange={e => setNewStudent({...newStudent, medicationDetails: e.target.value})} className="w-full px-4 py-2 mt-2 bg-white border-2 border-[#E1F5FE] rounded-xl font-bold text-sm outline-none focus:border-[#FF8A65]" placeholder="Qual medicamento?" />
+                      )}
+                    </div>
+                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
+                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
+                        <input type="checkbox" checked={newStudent.allergies} onChange={e => setNewStudent({...newStudent, allergies: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
+                        Tem Alergia?
+                      </label>
+                      {newStudent.allergies && (
+                        <input required value={newStudent.allergiesDetails} onChange={e => setNewStudent({...newStudent, allergiesDetails: e.target.value})} className="w-full px-4 py-2 mt-2 bg-white border-2 border-[#E1F5FE] rounded-xl font-bold text-sm outline-none focus:border-[#FF8A65]" placeholder="Qual alergia?" />
+                      )}
+                    </div>
+                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
+                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
+                        <input type="checkbox" checked={newStudent.surgery} onChange={e => setNewStudent({...newStudent, surgery: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
+                        Fez Cirurgia?
+                      </label>
+                      {newStudent.surgery && (
+                        <input required value={newStudent.surgeryDetails} onChange={e => setNewStudent({...newStudent, surgeryDetails: e.target.value})} className="w-full px-4 py-2 mt-2 bg-white border-2 border-[#E1F5FE] rounded-xl font-bold text-sm outline-none focus:border-[#FF8A65]" placeholder="Qual cirurgia?" />
+                      )}
+                    </div>
+                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
+                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
+                        <input type="checkbox" checked={newStudent.neurodivergent} onChange={e => setNewStudent({...newStudent, neurodivergent: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
+                        Neurodivergente?
+                      </label>
+                      {newStudent.neurodivergent && (
+                        <label className="flex items-center gap-2 mt-2 text-sm font-bold text-gray-500 cursor-pointer">
+                          <input type="checkbox" checked={newStudent.neurodivergentReport} onChange={e => setNewStudent({...newStudent, neurodivergentReport: e.target.checked})} className="w-4 h-4 accent-[#FF8A65]" />
+                          Possui Laudo?
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-4 pt-4">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsRegistering(false)}
+                      className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-[24px] font-black border-b-6 border-gray-300 active:translate-y-1 transition-all"
+                    >
+                      CANCELAR
+                    </button>
+                    <button 
+                      type="submit"
+                      className="flex-3 py-4 bg-[#81C784] text-white rounded-[24px] font-black border-b-6 border-[#388E3C] active:translate-y-1 transition-all shadow-lg"
+                    >
+                      FINALIZAR MATRÍCULA 🎉
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        {students.map(s => (
+          <div key={s.id} className="relative group">
+            <div className="absolute inset-0 translate-x-4 translate-y-4 rounded-[56px] -z-10 group-hover:translate-x-6 group-hover:translate-y-6 transition-all duration-300 bg-[#E1F5FE]" />
+            <div className="bg-white p-8 rounded-[56px] border-4 border-[#4FC3F7] shadow-xl relative overflow-hidden flex flex-col items-center text-center">
+               <div className="absolute top-4 right-4 flex flex-col gap-2 z-30">
+                 <button 
+                   onClick={(e) => { e.stopPropagation(); handleEdit(s); }} 
+                   className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                 >
+                   ✏️
+                 </button>
+                 <button 
+                   onClick={(e) => { e.stopPropagation(); setDeletingId(s.id); }} 
+                   className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                 >
+                   <Trash2 className="w-5 h-5" />
+                 </button>
+               </div>
+               <div className="w-28 h-28 bg-[#F5FBFF] rounded-[40px] border-4 border-[#E1F5FE] overflow-hidden mb-6 shadow-inner relative group-hover:rotate-6 transition-transform flex items-center justify-center text-5xl">
+                  {s.photoUrl ? <img src={s.photoUrl} alt="" className="rounded-full w-full h-full object-cover" /> : '👦'}
+               </div>
+               <h3 className="text-2xl font-black text-[#5D4037] mb-1">{s.name}</h3>
+               <span className="bg-[#4FC3F7] px-4 py-1 rounded-full text-white font-black text-xs border-2 border-[#0288D1] mb-6 uppercase tracking-tighter">
+                  {s.grade} • {s.turma}
+               </span>
+               
+               <div className="grid grid-cols-2 gap-4 w-full pt-6 border-t-4 border-dashed border-gray-100 mb-6">
+                  <div className="bg-[#FFF9C4] p-3 rounded-2xl border-b-4 border-[#FBC02D]">
+                    <p className="text-[10px] font-black text-[#F57F17] opacity-60 uppercase mb-1">Presença</p>
+                    <p className="text-lg font-black text-[#F57F17]">98%</p>
+                  </div>
+                  <div className="bg-[#E8F5E9] p-3 rounded-2xl border-b-4 border-[#388E3C]">
+                    <p className="text-[10px] font-black text-[#2E7D32] opacity-60 uppercase mb-1">Média</p>
+                    <p className="text-lg font-black text-[#2E7D32]">8.5</p>
+                  </div>
+               </div>
+
+               <div className="w-full space-y-3">
+                 <button 
+                   onClick={() => generatePDF(s)}
+                   className="w-full py-4 bg-[#E1F5FE] text-[#0288D1] rounded-[24px] font-black text-sm border-b-6 border-[#4FC3F7] flex items-center justify-center gap-2 hover:brightness-95 active:translate-y-1 transition-all"
+                 >
+                   <Printer className="w-4 h-4" /> COMPROVANTE
+                 </button>
+               </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AttendanceView({ students }: { students: Student[] }) {
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+  const today = new Date().toLocaleDateString('pt-BR');
+
+  const toggleAttendance = (id: string) => {
+    setAttendance(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const saveAttendance = () => {
+    alert('Chamada salva com muito carinho! ✨');
+  };
+
+  return (
+    <div className="space-y-10">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#01579B]">Hora da Chamada! 📝</h2>
+          <p className="text-[#546E7A] font-bold">Quem veio brincar na escola hoje?</p>
+        </div>
+        <div className="bg-white px-8 py-4 rounded-[32px] border-4 border-[#E1F5FE] shadow-lg flex items-center gap-4">
+           <span className="text-3xl">📅</span>
+           <div className="text-left">
+             <p className="text-[10px] font-black text-[#78909C] uppercase tracking-widest">Data de Hoje</p>
+             <p className="font-black text-[#01579B] text-xl">{today}</p>
+           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[56px] border-8 border-[#81C784] shadow-2xl overflow-hidden">
+        <div className="p-8 bg-[#E8F5E9] border-b-4 border-[#81C784] flex items-center justify-between">
+           <h3 className="text-2xl font-black text-[#2E7D32] flex items-center gap-3">
+             <span className="text-3xl">🎒</span> Lista de Alunos
+           </h3>
+           <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs font-black text-[#2E7D32] opacity-60">PRESENTES</p>
+                <p className="text-2xl font-black text-[#2E7D32]">
+                   {Object.values(attendance).filter(Boolean).length} / {students.length}
+                </p>
+              </div>
+              <button 
+                onClick={saveAttendance}
+                className="px-10 py-5 bg-[#388E3C] text-white rounded-[24px] font-black border-b-8 border-[#1B5E20] shadow-xl hover:brightness-110 active:translate-y-1 transition-all"
+              >
+                SALVAR CHAMADA ✅
+              </button>
+           </div>
+        </div>
+        
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+           {students.map(student => (
+              <button 
+                key={student.id}
+                onClick={() => toggleAttendance(student.id)}
+                className={`p-6 rounded-[32px] border-4 flex items-center gap-6 transition-all transform active:scale-95 ${
+                  attendance[student.id] 
+                  ? 'bg-[#E8F5E9] border-[#81C784] shadow-inner' 
+                  : 'bg-white border-[#E1F5FE] hover:border-[#81C784]/30'
+                }`}
+              >
+                 <div className={`w-16 h-16 rounded-2xl border-4 overflow-hidden relative flex items-center justify-center text-4xl ${attendance[student.id] ? 'border-[#81C784] bg-white' : 'border-[#E1F5FE] bg-[#F5FBFF]'}`}>
+                    {student.photoUrl ? <img src={student.photoUrl} alt="" className="w-full h-full object-cover" /> : '👦'}
+                    {attendance[student.id] && (
+                       <div className="absolute inset-0 bg-[#81C784]/20 flex items-center justify-center">
+                          <CheckCircle2 className="text-[#2E7D32] w-8 h-8 drop-shadow-md" />
+                       </div>
+                    )}
+                 </div>
+                 <div className="flex-1 text-left">
+                    <p className={`text-xl font-black ${attendance[student.id] ? 'text-[#2E7D32]' : 'text-[#78909C]'}`}>
+                      {student.name}
+                    </p>
+                    <p className={`text-xs font-black uppercase tracking-widest ${attendance[student.id] ? 'text-[#81C784]' : 'text-gray-400'}`}>
+                      {attendance[student.id] ? 'Presente na aula!' : 'Ainda não chegou'}
+                    </p>
+                 </div>
+                 <div className={`w-10 h-10 rounded-full border-4 flex items-center justify-center text-xl shadow-md ${
+                   attendance[student.id] ? 'bg-[#388E3C] border-white text-white' : 'bg-gray-100 border-gray-200 text-transparent'
+                 }`}>
+                   ✓
+                 </div>
+              </button>
+           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeachersView({ teachers, setTeachers }: { teachers: Teacher[], setTeachers: (t: Teacher[]) => void }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handleSave = (data: any) => {
+    if (editingTeacher) {
+      setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...t, ...data, classes: data.classes.split(',') } : t));
+    } else {
+      setTeachers([...teachers, { ...data, id: Math.random().toString(), classes: data.classes.split(',') }]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = (id: string) => {
+    setTeachers(teachers.filter(t => t.id !== id));
+    setDeletingId(null);
+  };
+
+  return (
+    <div className="space-y-10">
+      {isModalOpen && (
+        <MagicFormModal 
+          title={editingTeacher ? "Editar Mestre" : "Novo Mestre"}
+          icon="🍎"
+          fields={[
+            { key: 'name', label: 'Nome do Mestre', placeholder: 'Ex: Prof. João' },
+            { key: 'subject', label: 'Matéria', placeholder: 'Ex: Matemática' },
+            { key: 'classes', label: 'Turmas (separadas por vírgula)', placeholder: 'Ex: 1º Ano A, 2º Ano B' }
+          ]}
+          initialData={editingTeacher ? { ...editingTeacher, classes: editingTeacher.classes.join(', ') } : {}}
+          onSubmit={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Remover Mestre?"
+            message="Deseja realmente remover este mestre da nossa escola?"
+            confirmText="SIM, REMOVER"
+            cancelText="NÃO, MANTER"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+       <div className="flex items-center justify-between">
+        <h2 className="text-4xl font-black text-[#01579B]">Nossos Mestres 🍎</h2>
+        <button onClick={() => { setEditingTeacher(null); setIsModalOpen(true); }} className="px-8 py-4 bg-[#81C784] text-white rounded-[32px] font-black border-b-8 border-[#388E3C] flex items-center gap-2 shadow-xl hover:scale-105 transition-all">
+          <PlusCircle className="w-6 h-6" />
+          <span>NOVO MESTRE</span>
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        {teachers.map(t => (
+          <div key={t.id} className="bg-white p-10 rounded-[48px] shadow-2xl border-r-8 border-b-8 border-[#4FC3F7] relative group hover:scale-[1.02] transition-transform">
+            <div className="absolute top-4 right-4 flex flex-col gap-2 z-30">
+                 <button onClick={() => { setEditingTeacher(t); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
+                 <button onClick={() => setDeletingId(t.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer">
+                   <Trash2 className="w-5 h-5" />
+                 </button>
+            </div>
+            <div className="absolute top-4 left-4 text-5xl opacity-20">🍏</div>
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-32 h-32 bg-[#FFF176] rounded-[40px] border-4 border-[#FBC02D] mb-6 flex items-center justify-center text-6xl shadow-xl overflow-hidden group-hover:rotate-6 transition-transform">
+                {t.photoUrl ? <img src={t.photoUrl} alt="" className="w-full h-full object-cover" /> : '👨‍🏫'}
+              </div>
+              <h4 className="text-2xl font-black text-[#5D4037] mb-1">{t.name}</h4>
+              <p className="text-[#0288D1] font-black text-sm mb-6 uppercase tracking-widest">{t.subject}</p>
+              
+              <div className="flex flex-wrap justify-center gap-3">
+                {t.classes.map((c: string, i: number) => (
+                  <span key={i} className="px-4 py-2 bg-[#E1F5FE] rounded-2xl text-[10px] font-black text-[#0277BD] border-2 border-[#4FC3F7] shadow-sm">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CommunicationView({ announcements, setAnnouncements }: { announcements: Announcement[], setAnnouncements: (a: Announcement[]) => void }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingAnn, setEditingAnn] = useState<Announcement | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handleSave = (data: any) => {
+    if (editingAnn) {
+      setAnnouncements(announcements.map(a => a.id === editingAnn.id ? { ...a, ...data } : a));
+    } else {
+      setAnnouncements([{ ...data, id: Math.random().toString(), date: new Date().toLocaleDateString('pt-BR') }, ...announcements]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = (id: string) => {
+    setAnnouncements(announcements.filter(a => a.id !== id));
+    setDeletingId(null);
+  };
+
+  return (
+     <div className="max-w-4xl mx-auto space-y-10">
+      {isModalOpen && (
+        <MagicFormModal 
+          title={editingAnn ? "Editar Recado" : "Novo Recado"}
+          icon="📢"
+          fields={[
+            { key: 'title', label: 'Título do Recado', placeholder: 'Ex: Reunião de Pais' },
+            { key: 'content', label: 'Mensagem', placeholder: 'Ex: Lembramos que amanhã...' },
+            { key: 'target', label: 'Público (all, parents, teachers)', placeholder: 'Ex: parents' }
+          ]}
+          initialData={editingAnn || { target: 'all' }}
+          onSubmit={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Remover Recado?"
+            message="Tem certeza que deseja apagar este recado do mural?"
+            confirmText="SIM, APAGAR"
+            cancelText="NÃO, MANTER"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+      <div className="flex items-center justify-between">
+        <h2 className="text-4xl font-black text-[#D84315] drop-shadow-sm">Mural de Recados 📢</h2>
+        <div className="flex gap-4">
+           <button className="px-6 py-3 bg-white text-[#D84315] rounded-2xl font-black border-4 border-[#FF8A65] shadow-md">FILTROS</button>
+           <button onClick={() => { setEditingAnn(null); setIsModalOpen(true); }} className="px-6 py-3 bg-[#FF8A65] text-white rounded-2xl font-black border-b-6 border-[#D84315] shadow-lg hover:scale-105 transition-all">NOVO RECADO</button>
+        </div>
+      </div>
+
+      <div className="space-y-8">
+        {announcements.map(ann => (
+          <div key={ann.id} className="bg-white p-10 rounded-[48px] border-4 border-[#FF8A65] shadow-xl relative overflow-hidden group">
+             <div className="absolute top-4 right-4 flex gap-2 z-30">
+                  <button onClick={() => { setEditingAnn(ann); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
+                  <button onClick={() => setDeletingId(ann.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+             </div>
+             <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF8A65]/10 rounded-full translate-x-12 -translate-y-12" />
+             <div className="flex items-center gap-6 mb-6">
+               <div className="w-16 h-16 bg-[#FFF9C4] rounded-3xl border-4 border-[#FBC02D] flex items-center justify-center shadow-inner">
+                 <span className="text-3xl">🔔</span>
+               </div>
+               <div>
+                 <h3 className="text-2xl font-black text-[#D84315]">{ann.title}</h3>
+                 <p className="text-xs text-[#FF8A65] font-black uppercase tracking-widest bg-white/80 self-start px-3 py-1 rounded-full border border-[#FF8A65]/20 mt-1">{ann.date} • Para: {ann.target}</p>
+               </div>
+             </div>
+             <p className="text-[#5D4037] text-lg font-medium leading-relaxed italic">{ann.content}</p>
+             <div className="mt-8 flex items-center justify-between">
+                <button className="px-8 py-3 bg-[#E1F5FE] text-[#0277BD] rounded-2xl font-black border-b-4 border-[#4FC3F7] hover:brightness-110 active:translate-y-1 transition-all">Lido e Entendido! ✅</button>
+                <div className="flex -space-x-4 items-center">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="w-10 h-10 rounded-full border-4 border-white bg-[#FF8A65] overflow-hidden shadow-md" />
+                  ))}
+                  <span className="ml-4 text-xs text-[#78909C] font-black uppercase">+12 pais viram</span>
+                </div>
+             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InventoryView({ items, setItems }: { items: any[], setItems: (i: any[]) => void }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handleSave = (data: any) => {
+    if (editingItem) {
+      setItems(items.map(i => i.id === editingItem.id ? { ...i, ...data } : i));
+    } else {
+      setItems([...items, { ...data, id: Math.random().toString(), icon: '📦' }]);
+    }
+    setIsModalOpen(false);
+    alert('Item de estoque salvo com sucesso! 📦');
+  };
+
+  const handleDelete = (id: string) => {
+    setItems(items.filter(i => i.id !== id));
+    setDeletingId(null);
+  };
+
+  return (
+    <div className="space-y-10">
+      {isModalOpen && (
+        <MagicFormModal 
+          title={editingItem ? "Editar Item" : "Novo Item"}
+          icon="📦"
+          fields={[
+            { key: 'name', label: 'Nome do Material', placeholder: 'Ex: Lápis' },
+            { key: 'stock', label: 'Quantidade Atual', type: 'number', placeholder: 'Ex: 100' },
+            { key: 'min', label: 'Estoque Mínimo', type: 'number', placeholder: 'Ex: 20' },
+            { key: 'unit', label: 'Unidade (Caixas, Un, etc)', placeholder: 'Ex: Unidades' }
+          ]}
+          initialData={editingItem || {}}
+          onSubmit={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Remover do Estoque?"
+            message="Tem certeza que deseja apagar este item permanentemente?"
+            confirmText="SIM, REMOVER"
+            cancelText="NÃO, MANTER"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#01579B]">Estoque da Escola 📦</h2>
+          <p className="text-[#546E7A] font-bold">Onde guardamos nossos materiais!</p>
+        </div>
+        <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="px-8 py-4 bg-[#81C784] text-white rounded-[24px] font-black border-b-8 border-[#388E3C] shadow-xl hover:scale-105 transition-all">NOVO ITEM</button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {items.map((item, i) => (
+          <div key={item.id} className="bg-white p-8 rounded-[48px] border-4 border-[#E1F5FE] shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+            <div className="absolute top-4 right-4 flex gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button onClick={() => { setEditingItem(item); setIsModalOpen(true); }} className="w-8 h-8 bg-[#FFF176] rounded-full flex items-center justify-center text-sm border-b-4 border-[#FBC02D] shadow-sm">✏️</button>
+                 <button onClick={() => setDeletingId(item.id)} className="w-8 h-8 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm">
+                   <Trash2 className="w-4 h-4" />
+                 </button>
+            </div>
+            <h4 className="text-xl font-black text-[#5D4037] mb-4 flex items-center gap-2">
+               <span className="text-2xl">{item.icon}</span> {item.name}
+            </h4>
+            <div className="flex items-end justify-between">
+              <div>
+                <p className={`text-5xl font-black ${item.stock < item.min ? 'text-[#D84315]' : 'text-[#01579B]'}`}>{item.stock}</p>
+                <p className="text-[10px] text-[#78909C] font-black uppercase tracking-widest">{item.unit}</p>
+              </div>
+              {item.stock < item.min && (
+                <div className="px-3 py-1 bg-[#FBE9E7] rounded-full border-2 border-[#FF8A65] text-[10px] text-[#D84315] font-black uppercase animate-pulse">
+                  BAIXO ⚠️
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PhotosView({ albums, setAlbums }: { albums: any[], setAlbums: (a: any[]) => void }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingAlbum, setEditingAlbum] = useState<any | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handleSave = (data: any) => {
+    if (editingAlbum) {
+      setAlbums(albums.map(a => a.id === editingAlbum.id ? { ...a, ...data } : a));
+    } else {
+      setAlbums([...albums, { ...data, id: Math.random().toString(), count: 0, cover: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400&q=80' }]);
+    }
+    setIsModalOpen(false);
+    alert('Álbum salvo com sucesso! 📸');
+  };
+
+  const handleDelete = (id: string) => {
+    setAlbums(albums.filter(a => a.id !== id));
+    setDeletingId(null);
+  };
+
+  return (
+     <div className="space-y-10">
+       {isModalOpen && (
+        <MagicFormModal 
+          title={editingAlbum ? "Editar Álbum" : "Novo Álbum"}
+          icon="📸"
+          fields={[
+            { key: 'title', label: 'Título do Álbum', placeholder: 'Ex: Passeio no Parque' },
+            { key: 'date', label: 'Data', placeholder: 'Ex: Outubro 2024' },
+          ]}
+          initialData={editingAlbum || {}}
+          onSubmit={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Remover Álbum?"
+            message="Todas as fotos do álbum serão removidas. Continuar?"
+            confirmText="SIM, REMOVER"
+            cancelText="NÃO, MANTER"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#01579B]">Álbum de Memórias 📸</h2>
+          <p className="text-[#546E7A] font-bold">Cada foto um sorriso guardado!</p>
+        </div>
+        <button onClick={() => { setEditingAlbum(null); setIsModalOpen(true); }} className="px-8 py-4 bg-[#FF5252] text-white rounded-[24px] font-black border-b-8 border-[#D50000] shadow-xl hover:scale-105 transition-all">NOVO ÁLBUM</button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        {albums.map((al, i) => (
+          <div key={al.id} className="group relative">
+             <div className="absolute top-4 right-10 flex gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button onClick={() => { setEditingAlbum(al); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm">✏️</button>
+                 <button onClick={() => setDeletingId(al.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm">
+                   <Trash2 className="w-5 h-5" />
+                 </button>
+            </div>
+             <div className="absolute inset-0 bg-[#4FC3F7] rounded-[56px] translate-x-4 translate-y-4 -z-10 group-hover:translate-x-6 group-hover:translate-y-6 transition-all" />
+             <div className="bg-white p-6 rounded-[56px] border-4 border-[#E1F5FE] shadow-2xl overflow-hidden relative">
+                <div className="h-64 rounded-[40px] overflow-hidden mb-6 border-4 border-white shadow-inner relative">
+                   <img src={al.cover} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
+                      <div className="flex items-center gap-3 text-white">
+                         <span className="text-2xl">🖼️</span>
+                         <span className="font-black text-xl drop-shadow-md">{al.count} fotos</span>
+                      </div>
+                   </div>
+                </div>
+                <div className="px-4">
+                  <h4 className="text-2xl font-black text-[#5D4037] mb-2">{al.title}</h4>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-black text-[#78909C] uppercase tracking-widest">{al.date}</p>
+                    <button className="w-12 h-12 bg-[#E1F5FE] rounded-full flex items-center justify-center text-[#0288D1] border-2 border-white shadow-lg hover:bg-[#4FC3F7] hover:text-white transition-all scale-100 group-hover:scale-110">
+                       →
+                    </button>
+                  </div>
+                </div>
+             </div>
+          </div>
+        ))}
+        <div onClick={() => { setEditingAlbum(null); setIsModalOpen(true); }} className="border-8 border-dashed border-[#E1F5FE] rounded-[56px] flex flex-col items-center justify-center min-h-[350px] text-[#4FC3F7] hover:bg-[#E1F5FE]/20 hover:border-[#4FC3F7] transition-all cursor-pointer group">
+           <PlusCircle className="w-16 h-16 mb-4 group-hover:scale-110 transition-transform" />
+           <p className="font-black text-xl uppercase tracking-widest">Criar Álbum</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const AlertCircle = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+);
+
+function ClassesView({ classes, setClasses }: { classes: any[], setClasses: (c: any[]) => void }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<any | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handleSave = (data: any) => {
+    if (editingClass) {
+      setClasses(classes.map(c => c.id === editingClass.id ? { ...c, ...data } : c));
+    } else {
+      const colors = ['#FF8A65', '#4FC3F7', '#FFF176', '#81C784', '#FF5252'];
+      const borders = ['#D84315', '#0288D1', '#FBC02D', '#388E3C', '#D50000'];
+      const icons = ['🦁', '🐳', '🦊', '🐸', '🐞', '🦉'];
+      const randomIndex = Math.floor(Math.random() * colors.length);
+      
+      setClasses([...classes, { 
+        ...data, 
+        id: Math.random().toString(),
+        color: colors[randomIndex],
+        border: borders[randomIndex],
+        icon: icons[Math.floor(Math.random() * icons.length)]
+      }]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = (id: string) => {
+    setClasses(classes.filter(c => c.id !== id));
+    setDeletingId(null);
+  };
+
+  return (
+    <div className="space-y-10">
+      {isModalOpen && (
+        <MagicFormModal 
+          title={editingClass ? "Editar Turma" : "Nova Turma"}
+          icon="🏫"
+          fields={[
+            { key: 'name', label: 'Nome da Turma', placeholder: 'Ex: 1º Ano C' },
+            { key: 'teacher', label: 'Professor Responsável', placeholder: 'Ex: Prof. Silva' },
+            { key: 'students', label: 'Quantidade de Alunos', type: 'number', placeholder: 'Ex: 20' }
+          ]}
+          initialData={editingClass || {}}
+          onSubmit={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Remover Turma?"
+            message="Tem certeza que deseja dissolver esta turma de aventureiros?"
+            confirmText="SIM, REMOVER"
+            cancelText="NÃO, MANTER"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#01579B]">Nossas Turmas 🏫</h2>
+          <p className="text-[#546E7A] font-bold">As equipes de aventureiros da escola!</p>
+        </div>
+        <button onClick={() => { setEditingClass(null); setIsModalOpen(true); }} className="px-8 py-4 bg-[#4FC3F7] text-white rounded-[32px] font-black border-b-8 border-[#0288D1] shadow-xl flex items-center gap-2 hover:scale-105 transition-all">
+          <PlusCircle className="w-6 h-6" />
+          <span>NOVA TURMA</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {classes.map(c => (
+          <div key={c.id} className="bg-white p-8 rounded-[48px] shadow-2xl border-b-8 border-r-8 relative group hover:scale-[1.02] transition-transform" style={{ borderColor: c.color }}>
+            <div className="absolute top-4 right-4 flex flex-col gap-2 z-30">
+                 <button onClick={() => { setEditingClass(c); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
+                 <button onClick={() => setDeletingId(c.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer">
+                   <Trash2 className="w-5 h-5" />
+                 </button>
+            </div>
+            <div className="absolute top-6 left-6 w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-inner border-4 border-white" style={{ backgroundColor: c.color + '33' }}>
+               {c.icon}
+            </div>
+            <div className="relative pt-12 flex flex-col items-center">
+              <h3 className="text-3xl font-black text-[#5D4037] mb-2">{c.name}</h3>
+              <p className="font-bold text-gray-500 mb-6 uppercase tracking-widest text-xs">Prof: {c.teacher}</p>
+              
+              <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-3xl border-2 border-gray-100 mb-6 w-full">
+                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm border-2 border-gray-100">🎒</div>
+                 <div>
+                   <p className="text-2xl font-black text-[#01579B] leading-none">{c.students}</p>
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alunos</p>
+                 </div>
+              </div>
+
+              <button className="w-full py-4 text-white rounded-[24px] font-black border-b-6 shadow-md transition-all active:translate-y-1" style={{ backgroundColor: c.color, borderColor: c.border }}>
+                 VER DETALHES
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DirectiveView({ members, setMembers }: { members: DirectiveMember[], setMembers: (m: DirectiveMember[]) => void }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<DirectiveMember | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handleSave = (data: any) => {
+    if (editingMember) {
+      setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...data } : m));
+    } else {
+      setMembers([...members, { ...data, id: Math.random().toString() }]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = (id: string) => {
+    setMembers(members.filter(m => m.id !== id));
+    setDeletingId(null);
+  };
+
+  return (
+    <div className="space-y-10">
+      {isModalOpen && (
+        <MagicFormModal 
+          title={editingMember ? "Editar Diretor" : "Novo Diretor"}
+          icon="👔"
+          fields={[
+            { key: 'name', label: 'Nome do Diretor', placeholder: 'Ex: Dr. Carlos' },
+            { key: 'role', label: 'Cargo', placeholder: 'Ex: Diretor Financeiro' },
+            { key: 'email', label: 'E-mail', placeholder: 'Ex: carlos@escola.com' },
+            { key: 'phone', label: 'Telefone', placeholder: 'Ex: (11) 99999-9999' }
+          ]}
+          initialData={editingMember || {}}
+          onSubmit={handleSave}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+      
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Remover Diretor?"
+            message="Tem certeza que deseja remover este membro do corpo diretivo?"
+            confirmText="SIM, REMOVER"
+            cancelText="NÃO, MANTER"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#01579B]">Corpo Diretivo 👔</h2>
+          <p className="text-[#546E7A] font-bold">Liderança e Gestão da Escola Mágica</p>
+        </div>
+        <button 
+          onClick={() => { setEditingMember(null); setIsModalOpen(true); }} 
+          className="px-8 py-4 bg-[#4FC3F7] text-white rounded-[32px] font-black border-b-8 border-[#0288D1] flex items-center gap-2 shadow-xl hover:scale-105 transition-all"
+        >
+          <PlusCircle className="w-6 h-6" />
+          <span>NOVO DIRETOR</span>
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        {members.map(m => (
+          <div key={m.id} className="bg-white p-10 rounded-[48px] shadow-2xl border-l-8 border-b-8 border-[#0288D1] relative group hover:scale-[1.02] transition-transform">
+            <div className="absolute top-4 right-4 flex flex-col gap-2 z-30">
+                 <button onClick={() => { setEditingMember(m); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
+                 <button onClick={() => setDeletingId(m.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer">
+                   <Trash2 className="w-5 h-5" />
+                 </button>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="w-32 h-32 bg-[#E1F5FE] rounded-full border-4 border-[#4FC3F7] mb-6 flex items-center justify-center text-6xl shadow-xl overflow-hidden group-hover:rotate-3 transition-transform">
+                {m.photoUrl ? <img src={m.photoUrl} alt="" className="w-full h-full object-cover" /> : '👤'}
+              </div>
+              <h4 className="text-2xl font-black text-[#5D4037] mb-1">{m.name}</h4>
+              <p className="text-[#0288D1] font-black text-sm mb-4 uppercase tracking-widest">{m.role}</p>
+              
+              <div className="w-full space-y-2 border-t-2 border-dashed border-gray-100 pt-4">
+                <p className="text-xs font-bold text-gray-400 flex items-center gap-2">📧 {m.email || 'Não informado'}</p>
+                <p className="text-xs font-bold text-gray-400 flex items-center gap-2">📞 {m.phone || 'Não informado'}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }: any) {
+  const [formData, setFormData] = useState<any>(initialData || {});
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-6"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-[56px] border-8 border-[#4FC3F7] p-10 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
+      >
+        <button onClick={onClose} type="button" className="absolute top-6 right-6 p-2 bg-[#E1F5FE] text-[#0288D1] rounded-full hover:rotate-90 transition-transform z-20">
+          <X className="w-6 h-6" />
+        </button>
+
+        <div className="flex items-center gap-4 mb-8">
+           <div className="w-16 h-16 bg-[#FFF176] rounded-3xl border-4 border-[#FBC02D] flex items-center justify-center text-4xl shadow-inner">{icon}</div>
+           <h3 className="text-3xl font-black text-[#01579B] uppercase italic">{title}</h3>
+        </div>
+
+        <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6">
+          {fields.map((f: any) => (
+            <div key={f.key} className="space-y-2">
+              <label className="text-sm font-black text-[#0288D1] uppercase tracking-widest ml-1">{f.label}</label>
+              <input 
+                required={f.required !== false}
+                value={formData[f.key] || ''}
+                onChange={e => setFormData({...formData, [f.key]: e.target.value})}
+                type={f.type || 'text'}
+                className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#4FC3F7] outline-none transition-all"
+                placeholder={f.placeholder}
+              />
+            </div>
+          ))}
+          
+          <div className="flex gap-4 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-[24px] font-black border-b-6 border-gray-300 active:translate-y-1 transition-all">CANCELAR</button>
+            <button type="submit" className="flex-3 py-4 bg-[#81C784] text-white rounded-[24px] font-black border-b-6 border-[#388E3C] active:translate-y-1 transition-all shadow-lg">SALVAR ✅</button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void }) {
+  const [formData, setFormData] = useState(info);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setInfo(formData);
+    alert('Configurações salvas com sucesso! 🛡️');
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-10">
+      <div>
+        <h2 className="text-4xl font-black text-[#37474F]">Configurações ⚙️</h2>
+        <p className="text-gray-500 font-bold">Personalize a identidade e as regras da sua escola!</p>
+      </div>
+
+      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-10 pb-20">
+        {/* Coluna 1: Dados Básicos */}
+        <div className="bg-white p-8 rounded-[48px] shadow-2xl border-b-8 border-gray-200 space-y-6">
+          <h3 className="text-xl font-black text-[#01579B] flex items-center gap-2">
+            <span className="bg-[#E1F5FE] p-2 rounded-xl">🏢</span> Dados Oficiais
+          </h3>
+          
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nome da Escola</label>
+            <input 
+              value={formData.name} 
+              onChange={e => setFormData({...formData, name: e.target.value})}
+              className="w-full px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold outline-none focus:border-[#4FC3F7]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">CNPJ</label>
+            <input 
+              value={formData.cnpj} 
+              onChange={e => setFormData({...formData, cnpj: e.target.value})}
+              className="w-full px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold outline-none focus:border-[#4FC3F7]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Endereço</label>
+            <textarea 
+              rows={2}
+              value={formData.address} 
+              onChange={e => setFormData({...formData, address: e.target.value})}
+              className="w-full px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold outline-none focus:border-[#4FC3F7] resize-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Diretor(a)</label>
+            <input 
+              value={formData.director} 
+              onChange={e => setFormData({...formData, director: e.target.value})}
+              className="w-full px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold outline-none focus:border-[#4FC3F7]"
+            />
+          </div>
+        </div>
+
+        {/* Coluna 2: Identidade Visual */}
+        <div className="bg-white p-8 rounded-[48px] shadow-2xl border-b-8 border-gray-200 space-y-6">
+          <h3 className="text-xl font-black text-[#FF8A65] flex items-center gap-2">
+            <span className="bg-[#FBE9E7] p-2 rounded-xl">🎨</span> Identidade Visual
+          </h3>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Logo da Escola (URL)</label>
+            <div className="flex gap-4 items-center">
+              <div className="w-16 h-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                {formData.logoUrl ? <img src={formData.logoUrl} className="w-full h-full object-contain" /> : '🖼️'}
+              </div>
+              <input 
+                value={formData.logoUrl} 
+                onChange={e => setFormData({...formData, logoUrl: e.target.value})}
+                placeholder="https://..."
+                className="flex-1 px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold outline-none focus:border-[#4FC3F7]"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Cor Principal do Sistema</label>
+            <div className="flex gap-4 items-center">
+              <input 
+                type="color"
+                value={formData.primaryColor} 
+                onChange={e => setFormData({...formData, primaryColor: e.target.value})}
+                className="w-16 h-16 rounded-2xl cursor-pointer border-4 border-white shadow-md"
+              />
+              <input 
+                value={formData.primaryColor} 
+                onChange={e => setFormData({...formData, primaryColor: e.target.value})}
+                className="flex-1 px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold uppercase"
+              />
+            </div>
+          </div>
+
+          <div className="p-6 bg-blue-50 rounded-3xl border-2 border-blue-100 mt-4">
+            <p className="text-xs font-bold text-blue-600 leading-relaxed italic">
+              A cor escolhida será aplicada automaticamente nos documentos PDF e nos cabeçalhos de impressão.
+            </p>
+          </div>
+        </div>
+
+        {/* Coluna 3: Regras e Documentos */}
+        <div className="bg-white p-8 rounded-[48px] shadow-2xl border-b-8 border-gray-200 space-y-6">
+          <h3 className="text-xl font-black text-[#81C784] flex items-center gap-2">
+            <span className="bg-[#E8F5E9] p-2 rounded-xl">📜</span> Regras e Contratos
+          </h3>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nota para Aprovação</label>
+            <div className="flex gap-4 items-center">
+              <input 
+                type="range" min="0" max="10" step="0.5"
+                value={formData.passingGrade} 
+                onChange={e => setFormData({...formData, passingGrade: parseFloat(e.target.value)})}
+                className="flex-1 accent-[#81C784]"
+              />
+              <span className="w-12 h-12 bg-[#81C784] text-white flex items-center justify-center rounded-xl font-black shadow-lg">
+                {formData.passingGrade.toFixed(1)}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Texto do Comprovante/Contrato</label>
+            <textarea 
+              rows={5}
+              value={formData.contractTemplate} 
+              onChange={e => setFormData({...formData, contractTemplate: e.target.value})}
+              className="w-full px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold outline-none focus:border-[#4FC3F7] text-sm leading-relaxed"
+            />
+          </div>
+
+          <button type="submit" className="w-full py-5 bg-[#81C784] text-white rounded-[32px] font-black border-b-8 border-[#388E3C] shadow-lg hover:scale-[1.02] transition-all mt-4">
+            SALVAR TUDO ✅
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ConfirmationModal({ title, message, confirmText, cancelText, onConfirm, onClose, color }: any) {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-6"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-[48px] border-8 p-10 max-w-md w-full shadow-2xl relative text-center"
+        style={{ borderColor: color }}
+      >
+        <div className="w-20 h-20 bg-[#FBE9E7] rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-inner">
+          ⚠️
+        </div>
+        <h3 className="text-2xl font-black text-[#5D4037] mb-4 uppercase">{title}</h3>
+        <p className="text-gray-500 font-bold mb-8">{message}</p>
+        
+        <div className="flex gap-4">
+          <button 
+            onClick={onClose}
+            className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-[24px] font-black border-b-6 border-gray-300 active:translate-y-1 transition-all"
+          >
+            {cancelText}
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="flex-1 py-4 text-white rounded-[24px] font-black border-b-6 active:translate-y-1 transition-all shadow-lg"
+            style={{ backgroundColor: color, borderBottomColor: '#D50000' }}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
