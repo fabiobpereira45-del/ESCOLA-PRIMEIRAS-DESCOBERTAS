@@ -117,11 +117,29 @@ export default function App() {
       const { data: teacherData } = await supabase.from('teachers').select('*');
       if (teacherData) setTeachers(teacherData as any);
 
-      const { data: announcementData } = await supabase.from('announcements').select('*');
+      const { data: announcementData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
       if (announcementData) setAnnouncements(announcementData as any);
       
       const { data: classesData } = await supabase.from('classes').select('*');
       if (classesData) setClasses(classesData as any);
+
+      const { data: invData } = await supabase.from('inventory').select('*');
+      if (invData) setInventory(invData as any);
+
+      const { data: albumData } = await supabase.from('albums').select('*');
+      if (albumData) setAlbums(albumData as any);
+
+      const { data: finData } = await supabase.from('financial').select('*');
+      if (finData) setFinancialRecords(finData as any);
+
+      const { data: bookData } = await supabase.from('books').select('*');
+      if (bookData) setBooks(bookData as any);
+
+      const { data: dirData } = await supabase.from('directive').select('*');
+      if (dirData) setDirectiveMembers(dirData as any);
+
+      const { data: schoolData } = await supabase.from('school_info').select('*').single();
+      if (schoolData) setSchoolInfo(schoolData as any);
     }
     loadData();
   }, []);
@@ -387,25 +405,36 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
   };
   const [newStudent, setNewStudent] = useState(defaultStudentState);
 
-  const handleRegister = (e: any) => {
+  const handleRegister = async (e: any) => {
     e.preventDefault();
-    const student = { 
-      ...newStudent, 
-      id: editingId || (students.length + 1).toString(), 
-      grade: 'Novo', 
+    const studentData = { 
+      name: newStudent.name,
+      grade: 'Novo', // Default grade
       turma: newStudent.class,
-      parentContact: newStudent.phone,
-      parentName: newStudent.guardian,
-      continuousMedication: newStudent.medication,
-      continuousMedicationDetails: newStudent.medicationDetails,
-      allergiesDetails: newStudent.allergiesDetails,
-      surgeryDetails: newStudent.surgeryDetails
+      parent_name: newStudent.guardian,
+      parent_contact: newStudent.phone,
+      address: newStudent.address,
+      additional_phone: newStudent.additionalPhone,
+      medication: newStudent.medication,
+      medication_details: newStudent.medicationDetails,
+      allergies: newStudent.allergies,
+      allergies_details: newStudent.allergiesDetails,
+      surgery: newStudent.surgery,
+      surgery_details: newStudent.surgeryDetails,
+      neurodivergent: newStudent.neurodivergent,
+      neurodivergent_report: newStudent.neurodivergentReport
     };
     
     if (editingId) {
-      setStudents(students.map(s => s.id === editingId ? student as any : s));
+      const { error } = await supabase.from('students').update(studentData).eq('id', editingId);
+      if (!error) {
+        setStudents(students.map(s => s.id === editingId ? { ...s, ...studentData } as any : s));
+      }
     } else {
-      setStudents([...students, student as any]);
+      const { data, error } = await supabase.from('students').insert(studentData).select();
+      if (!error && data) {
+        setStudents([...students, data[0] as any]);
+      }
     }
     
     setIsRegistering(false);
@@ -435,8 +464,11 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
     setIsRegistering(true);
   };
 
-  const handleDelete = (id: string) => {
-    setStudents(students.filter(s => s.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('students').delete().eq('id', id);
+    if (!error) {
+      setStudents(students.filter(s => s.id !== id));
+    }
     setDeletingId(null);
   };
 
@@ -874,17 +906,27 @@ function TeachersView({ teachers, setTeachers }: { teachers: Teacher[], setTeach
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleSave = (data: any) => {
+  const handleSave = async (data: any) => {
+    const teacherData = { ...data, classes: data.classes.split(',').map((c: string) => c.trim()) };
     if (editingTeacher) {
-      setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...t, ...data, classes: data.classes.split(',') } : t));
+      const { error } = await supabase.from('teachers').update(teacherData).eq('id', editingTeacher.id);
+      if (!error) {
+        setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...t, ...teacherData } : t));
+      }
     } else {
-      setTeachers([...teachers, { ...data, id: Math.random().toString(), classes: data.classes.split(',') }]);
+      const { data: newData, error } = await supabase.from('teachers').insert(teacherData).select();
+      if (!error && newData) {
+        setTeachers([...teachers, newData[0] as any]);
+      }
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setTeachers(teachers.filter(t => t.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('teachers').delete().eq('id', id);
+    if (!error) {
+      setTeachers(teachers.filter(t => t.id !== id));
+    }
     setDeletingId(null);
   };
 
@@ -973,17 +1015,27 @@ function CommunicationView({ announcements, setAnnouncements }: { announcements:
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleSave = (data: any) => {
+  const handleSave = async (data: any) => {
     if (editingAnn) {
-      setAnnouncements(announcements.map(a => a.id === editingAnn.id ? { ...a, ...data } : a));
+      const { error } = await supabase.from('announcements').update(data).eq('id', editingAnn.id);
+      if (!error) {
+        setAnnouncements(announcements.map(a => a.id === editingAnn.id ? { ...a, ...data } : a));
+      }
     } else {
-      setAnnouncements([{ ...data, id: Math.random().toString(), date: new Date().toLocaleDateString('pt-BR') }, ...announcements]);
+      const annData = { ...data, date: new Date().toLocaleDateString('pt-BR') };
+      const { data: newData, error } = await supabase.from('announcements').insert(annData).select();
+      if (!error && newData) {
+        setAnnouncements([newData[0] as any, ...announcements]);
+      }
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setAnnouncements(announcements.filter(a => a.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('announcements').delete().eq('id', id);
+    if (!error) {
+      setAnnouncements(announcements.filter(a => a.id !== id));
+    }
     setDeletingId(null);
   };
 
@@ -1076,18 +1128,27 @@ function InventoryView({ items, setItems }: { items: any[], setItems: (i: any[])
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleSave = (data: any) => {
+  const handleSave = async (data: any) => {
     if (editingItem) {
-      setItems(items.map(i => i.id === editingItem.id ? { ...i, ...data } : i));
+      const { error } = await supabase.from('inventory').update(data).eq('id', editingItem.id);
+      if (!error) {
+        setItems(items.map(i => i.id === editingItem.id ? { ...i, ...data } : i));
+      }
     } else {
-      setItems([...items, { ...data, id: Math.random().toString(), icon: '📦' }]);
+      const itemData = { ...data, icon: '📦' };
+      const { data: newData, error } = await supabase.from('inventory').insert(itemData).select();
+      if (!error && newData) {
+        setItems([...items, newData[0] as any]);
+      }
     }
     setIsModalOpen(false);
-    alert('Item de estoque salvo com sucesso! 📦');
   };
 
-  const handleDelete = (id: string) => {
-    setItems(items.filter(i => i.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('inventory').delete().eq('id', id);
+    if (!error) {
+      setItems(items.filter(i => i.id !== id));
+    }
     setDeletingId(null);
   };
 
@@ -1175,18 +1236,27 @@ function PhotosView({ albums, setAlbums }: { albums: any[], setAlbums: (a: any[]
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleSave = (data: any) => {
+  const handleSave = async (data: any) => {
     if (editingAlbum) {
-      setAlbums(albums.map(a => a.id === editingAlbum.id ? { ...a, ...data } : a));
+      const { error } = await supabase.from('albums').update(data).eq('id', editingAlbum.id);
+      if (!error) {
+        setAlbums(albums.map(a => a.id === editingAlbum.id ? { ...a, ...data } : a));
+      }
     } else {
-      setAlbums([...albums, { ...data, id: Math.random().toString(), count: 0, cover: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400&q=80' }]);
+      const albumData = { ...data, count: 0, cover: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400&q=80' };
+      const { data: newData, error } = await supabase.from('albums').insert(albumData).select();
+      if (!error && newData) {
+        setAlbums([...albums, newData[0] as any]);
+      }
     }
     setIsModalOpen(false);
-    alert('Álbum salvo com sucesso! 📸');
   };
 
-  const handleDelete = (id: string) => {
-    setAlbums(albums.filter(a => a.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('albums').delete().eq('id', id);
+    if (!error) {
+      setAlbums(albums.filter(a => a.id !== id));
+    }
     setDeletingId(null);
   };
 
@@ -1287,28 +1357,37 @@ function ClassesView({ classes, setClasses }: { classes: any[], setClasses: (c: 
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleSave = (data: any) => {
+  const handleSave = async (data: any) => {
     if (editingClass) {
-      setClasses(classes.map(c => c.id === editingClass.id ? { ...c, ...data } : c));
+      const { error } = await supabase.from('classes').update(data).eq('id', editingClass.id);
+      if (!error) {
+        setClasses(classes.map(c => c.id === editingClass.id ? { ...c, ...data } : c));
+      }
     } else {
       const colors = ['#FF8A65', '#4FC3F7', '#FFF176', '#81C784', '#FF5252'];
       const borders = ['#D84315', '#0288D1', '#FBC02D', '#388E3C', '#D50000'];
       const icons = ['🦁', '🐳', '🦊', '🐸', '🐞', '🦉'];
       const randomIndex = Math.floor(Math.random() * colors.length);
       
-      setClasses([...classes, { 
+      const classData = { 
         ...data, 
-        id: Math.random().toString(),
         color: colors[randomIndex],
         border: borders[randomIndex],
         icon: icons[Math.floor(Math.random() * icons.length)]
-      }]);
+      };
+      const { data: newData, error } = await supabase.from('classes').insert(classData).select();
+      if (!error && newData) {
+        setClasses([...classes, newData[0] as any]);
+      }
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setClasses(classes.filter(c => c.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('classes').delete().eq('id', id);
+    if (!error) {
+      setClasses(classes.filter(c => c.id !== id));
+    }
     setDeletingId(null);
   };
 
@@ -1403,17 +1482,26 @@ function DirectiveView({ members, setMembers }: { members: DirectiveMember[], se
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleSave = (data: any) => {
+  const handleSave = async (data: any) => {
     if (editingMember) {
-      setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...data } : m));
+      const { error } = await supabase.from('directive').update(data).eq('id', editingMember.id);
+      if (!error) {
+        setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...data } : m));
+      }
     } else {
-      setMembers([...members, { ...data, id: Math.random().toString() }]);
+      const { data: newData, error } = await supabase.from('directive').insert(data).select();
+      if (!error && newData) {
+        setMembers([...members, newData[0] as any]);
+      }
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setMembers(members.filter(m => m.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('directive').delete().eq('id', id);
+    if (!error) {
+      setMembers(members.filter(m => m.id !== id));
+    }
     setDeletingId(null);
   };
 
@@ -1549,10 +1637,13 @@ function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }:
 function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void }) {
   const [formData, setFormData] = useState(info);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setInfo(formData);
-    alert('Configurações salvas com sucesso! 🛡️');
+    const { error } = await supabase.from('school_info').upsert({ id: info.id || 1, ...formData });
+    if (!error) {
+      setInfo(formData);
+      alert('Configurações salvas no Supabase! 🛡️');
+    }
   };
 
   return (

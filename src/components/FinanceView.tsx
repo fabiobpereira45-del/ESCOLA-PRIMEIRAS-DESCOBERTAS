@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { DollarSign, FileText, Download, CheckCircle2, AlertCircle, Clock, Printer, X } from 'lucide-react';
 import { FinancialRecord } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { supabase } from '../lib/supabase';
 
 export default function FinanceView({ records, setRecords }: { records: FinancialRecord[], setRecords: (r: FinancialRecord[]) => void }) {
   const [selectedDoc, setSelectedDoc] = useState<{ type: string; record: FinancialRecord } | null>(null);
 
-  const markAsPaid = (id: string) => {
-    setRecords(records.map(r => r.id === id ? { ...r, status: 'paid' } : r));
-    alert('Pagamento registrado e salvo com sucesso! 💰');
+  const markAsPaid = async (id: string) => {
+    const { error } = await supabase.from('financial').update({ status: 'paid' }).eq('id', id);
+    if (!error) {
+      setRecords(records.map(r => r.id === id ? { ...r, status: 'paid' } : r));
+      alert('Pagamento registrado e salvo com sucesso! 💰');
+    }
   };
 
   return (

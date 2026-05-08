@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, RotateCcw } from 'lucide-react';
 import { LibraryBook } from '../types';
+import { supabase } from '../lib/supabase';
 
 export default function LibraryView({ books, setBooks }: { books: LibraryBook[], setBooks: (b: LibraryBook[]) => void }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -10,19 +11,22 @@ export default function LibraryView({ books, setBooks }: { books: LibraryBook[],
     b.author.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const toggleLoan = (id: string) => {
-    setBooks(books.map(b => {
-      if (b.id === id) {
-        return { 
-          ...b, 
-          available: !b.available, 
-          loanedTo: !b.available ? 'Novo Aluno' : undefined,
-          dueDate: !b.available ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR') : undefined
-        };
-      }
-      return b;
-    }));
-    alert('Alteração salva com sucesso na Biblioteca! 📚');
+  const toggleLoan = async (id: string) => {
+    const book = books.find(b => b.id === id);
+    if (!book) return;
+
+    const updates = { 
+      available: !book.available, 
+      loaned_to: !book.available ? 'Novo Aluno' : null,
+      due_date: !book.available ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR') : null
+    };
+
+    const { error } = await supabase.from('books').update(updates).eq('id', id);
+    
+    if (!error) {
+      setBooks(books.map(b => b.id === id ? { ...b, ...updates, loanedTo: updates.loaned_to, dueDate: updates.due_date } : b));
+      alert('Alteração salva com sucesso na Biblioteca! 📚');
+    }
   };
 
   return (
