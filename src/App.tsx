@@ -62,13 +62,13 @@ export default function App() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [schoolInfo, setSchoolInfo] = useState({
-    name: 'Escola Mágica Primeiras Descobertas',
-    address: 'Rua da Alegria, 123 - Bairro Feliz, São Paulo - SP',
+    name: 'Escola Primeiras Descobertas (EPD)',
+    address: 'Rua das Descobertas, 123',
     cnpj: '00.000.000/0001-00',
     phone: '(11) 98765-4321',
-    email: 'contato@escolamagica.com.br',
+    email: 'contato@escolapreimeiras.com.br',
     director: 'Prof. Carlos Alberto',
-    logoUrl: 'https://cdn-icons-png.flaticon.com/512/3481/3481061.png',
+    logoUrl: '/logo.png',
     primaryColor: '#4FC3F7',
     passingGrade: 7.0,
     contractTemplate: 'Declaramos para os devidos fins que o(a) aluno(a) acima identificado(a) encontra-se devidamente matriculado(a) nesta instituição de ensino para o ano letivo corrente.'
@@ -297,7 +297,7 @@ function Dashboard({ students, announcements }: { students: Student[], announcem
       <div className="flex items-end justify-between">
         <div>
           <h2 className="text-5xl font-black text-[#01579B]">Painel Geral 🚀</h2>
-          <p className="text-[#546E7A] font-bold text-lg mt-1 italic">Bem-vindo à Escola Mágica da Diversão!</p>
+          <p className="text-[#546E7A] font-bold text-lg mt-1 italic">Bem-vindo à Escola Primeiras Descobertas!</p>
         </div>
         <button className="bg-[#FF5252] text-white py-4 px-8 rounded-[32px] border-b-8 border-[#D50000] font-black flex items-center gap-3 shadow-xl transform hover:-translate-y-1 transition-all active:translate-y-1">
           <span className="text-2xl">💻</span> <span>PORTAL EAD</span>
