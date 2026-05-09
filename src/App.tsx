@@ -177,7 +177,7 @@ export default function App() {
               <div className="w-12 h-12 bg-[#4FC3F7] rounded-2xl flex items-center justify-center shadow-md border-b-4 border-[#0288D1]">
                 <GraduationCap className="text-white w-7 h-7" />
               </div>
-              <h1 className="font-black text-xl tracking-tight text-[#01579B]">Escola Mágica</h1>
+              <h1 className="font-black text-xl tracking-tight text-[#01579B]">EPD</h1>
             </div>
 
             <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-3">
