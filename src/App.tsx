@@ -133,7 +133,7 @@ export default function App() {
       const { data: albumData } = await supabase.from('albums').select('*');
       if (albumData) setAlbums(albumData as any);
 
-      const { data: finData } = await supabase.from('financial').select('*');
+      const { data: finData } = await supabase.from('financial_records').select('*');
       if (finData) setFinancialRecords(finData as any);
 
       const { data: bookData } = await supabase.from('books').select('*');
@@ -504,21 +504,10 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
     e.preventDefault();
     const studentData = { 
       name: newStudent.name,
-      grade: 'Novo', // Default grade
+      grade: 'Novo', 
       turma: newStudent.class,
       parent_name: newStudent.guardian,
       parent_contact: newStudent.phone,
-      address: newStudent.address,
-      additional_phone: newStudent.additionalPhone,
-      medication: newStudent.medication,
-      medication_details: newStudent.medicationDetails,
-      allergies: newStudent.allergies,
-      allergies_details: newStudent.allergiesDetails,
-      surgery: newStudent.surgery,
-      surgery_details: newStudent.surgeryDetails,
-      neurodivergent: newStudent.neurodivergent,
-      neurodivergent_report: newStudent.neurodivergentReport,
-      gender: newStudent.gender,
       photo_url: newStudent.photoUrl
     };
     
@@ -826,53 +815,6 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
                     </div>
                   </div>
 
-                  {/* Saúde e Cuidados */}
-                  <div className="pt-4 pb-2 border-t-4 border-dashed border-[#E1F5FE]">
-                    <h4 className="text-lg font-black text-[#01579B]">Ficha Médica 🩺</h4>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
-                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
-                        <input type="checkbox" checked={newStudent.medication} onChange={e => setNewStudent({...newStudent, medication: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
-                        Usa Medicamento?
-                      </label>
-                      {newStudent.medication && (
-                        <input required value={newStudent.medicationDetails} onChange={e => setNewStudent({...newStudent, medicationDetails: e.target.value})} className="w-full px-4 py-2 mt-2 bg-white border-2 border-[#E1F5FE] rounded-xl font-bold text-sm outline-none focus:border-[#FF8A65]" placeholder="Qual medicamento?" />
-                      )}
-                    </div>
-                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
-                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
-                        <input type="checkbox" checked={newStudent.allergies} onChange={e => setNewStudent({...newStudent, allergies: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
-                        Tem Alergia?
-                      </label>
-                      {newStudent.allergies && (
-                        <input required value={newStudent.allergiesDetails} onChange={e => setNewStudent({...newStudent, allergiesDetails: e.target.value})} className="w-full px-4 py-2 mt-2 bg-white border-2 border-[#E1F5FE] rounded-xl font-bold text-sm outline-none focus:border-[#FF8A65]" placeholder="Qual alergia?" />
-                      )}
-                    </div>
-                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
-                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
-                        <input type="checkbox" checked={newStudent.surgery} onChange={e => setNewStudent({...newStudent, surgery: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
-                        Fez Cirurgia?
-                      </label>
-                      {newStudent.surgery && (
-                        <input required value={newStudent.surgeryDetails} onChange={e => setNewStudent({...newStudent, surgeryDetails: e.target.value})} className="w-full px-4 py-2 mt-2 bg-white border-2 border-[#E1F5FE] rounded-xl font-bold text-sm outline-none focus:border-[#FF8A65]" placeholder="Qual cirurgia?" />
-                      )}
-                    </div>
-                    <div className="space-y-2 bg-[#F5FBFF] p-4 rounded-[24px] border-4 border-[#E1F5FE]">
-                      <label className="flex items-center gap-2 cursor-pointer font-black text-[#D84315] uppercase text-sm">
-                        <input type="checkbox" checked={newStudent.neurodivergent} onChange={e => setNewStudent({...newStudent, neurodivergent: e.target.checked})} className="w-5 h-5 accent-[#FF8A65]" />
-                        Neurodivergente?
-                      </label>
-                      {newStudent.neurodivergent && (
-                        <label className="flex items-center gap-2 mt-2 text-sm font-bold text-gray-500 cursor-pointer">
-                          <input type="checkbox" checked={newStudent.neurodivergentReport} onChange={e => setNewStudent({...newStudent, neurodivergentReport: e.target.checked})} className="w-4 h-4 accent-[#FF8A65]" />
-                          Possui Laudo?
-                        </label>
-                      )}
-                    </div>
-                  </div>
-                  
                   <div className="flex gap-4 pt-4">
                     <button 
                       type="button" 
@@ -975,7 +917,13 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
   }, []);
 
   const handleSave = async (data: any) => {
-    const classData = { ...data };
+    const classData = { 
+      name: data.name,
+      teacher: data.teacher,
+      icon: data.icon,
+      color: data.color,
+      border_color: data.border || data.border_color
+    };
     if (editingClass) {
       const { error } = await supabase.from('classes').update(classData).eq('id', editingClass.id);
       if (!error) {
@@ -1051,7 +999,7 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
         {classes.map(c => {
           const studentCount = students.filter(s => s.turma === c.name).length;
           return (
-            <div key={c.id} className="bg-white p-8 rounded-[48px] shadow-2xl border-l-8 border-b-8 relative group hover:scale-[1.02] transition-transform" style={{ borderColor: c.border || '#0288D1' }}>
+            <div key={c.id} className="bg-white p-8 rounded-[48px] shadow-2xl border-l-8 border-b-8 relative group hover:scale-[1.02] transition-transform" style={{ borderColor: c.border_color || c.border || '#0288D1' }}>
               <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => { setEditingClass(c); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
                 <button onClick={() => setDeletingId(c.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer"><Trash2 className="w-5 h-5" /></button>
