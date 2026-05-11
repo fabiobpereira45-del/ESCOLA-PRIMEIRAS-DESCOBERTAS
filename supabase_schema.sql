@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS public.classes (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     color TEXT, -- Cor HEX para UI
-    border_color TEXT
+    border_color TEXT,
+    tuition_fee NUMERIC(10,2) DEFAULT 850.00
 );
 
 -- 3. Tabela de Professores (teachers)
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.financial_records (
     student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
     type TEXT, -- tuition, fee, other
     amount NUMERIC(10,2) NOT NULL,
+    discount NUMERIC(10,2) DEFAULT 0,
     due_date DATE NOT NULL,
     status TEXT DEFAULT 'pending' -- pending, paid, overdue
 );

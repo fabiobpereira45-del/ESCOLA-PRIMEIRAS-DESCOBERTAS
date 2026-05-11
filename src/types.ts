@@ -82,6 +82,7 @@ export interface FinancialRecord {
   studentId: string;
   type: 'tuition' | 'fee' | 'other';
   amount: number;
+  discount?: number;
   dueDate: string;
   status: 'pending' | 'paid' | 'overdue';
 }
@@ -122,4 +123,14 @@ export interface Payroll {
   net_salary: number;
   reference_month: string;
   status: 'draft' | 'paid';
+}
+
+export interface Class {
+  id: string;
+  name: string;
+  teacher?: string;
+  icon?: string;
+  color?: string;
+  borderColor?: string;
+  tuitionFee: number;
 }

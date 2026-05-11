@@ -302,9 +302,13 @@ export default function App() {
               {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} occurrences={occurrences} setOccurrences={setOccurrences} />}
               {currentView === 'classes' && <ClassesView classes={classes} setClasses={setClasses} students={students} />}
               {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
-              {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} students={students} teachers={teachers} />}
+              {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} students={students} teachers={teachers} classes={classes} />}
               {currentView === 'carne' && <CarneView students={students} financialRecords={financialRecords} schoolInfo={schoolInfo} />}
-              {currentView === 'ead' && <EADPortal />}
+              {currentView === 'ead' && (
+                <EADPortal 
+                  studentRecords={financialRecords.filter(r => students.length > 0 && r.studentId === students[0].id)} 
+                />
+              )}
               {currentView === 'inventory' && <InventoryView items={inventory} setItems={setInventory} />}
               {currentView === 'photos' && <PhotosView albums={albums} setAlbums={setAlbums} />}
               {currentView === 'directive' && <DirectiveView members={directiveMembers} setMembers={setDirectiveMembers} />}
@@ -1359,7 +1363,8 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
       teacher: data.teacher,
       icon: data.icon,
       color: data.color,
-      border_color: data.border || data.border_color
+      border_color: data.border || data.border_color,
+      tuition_fee: parseFloat(data.tuition_fee) || 0
     };
     if (editingClass) {
       const { error } = await supabase.from('classes').update(classData).eq('id', editingClass.id);
@@ -1407,6 +1412,7 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
             fields={[
               { key: 'name', label: 'Nome da Turma', placeholder: 'Ex: G3 - Matutino' },
               { key: 'teacher', label: 'Professor(a) Responsável', placeholder: 'Ex: Profª. Márcia' },
+              { key: 'tuition_fee', label: 'Valor da Mensalidade (R$)', type: 'number', placeholder: 'Ex: 850.00' },
               { key: 'icon', label: 'Ícone (Emoji)', type: 'emoji' },
               { key: 'color', label: 'Cor de Fundo', type: 'color' },
               { key: 'border', label: 'Cor da Borda', type: 'color' }
@@ -1446,9 +1452,10 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
                 <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl shadow-inner" style={{ backgroundColor: c.color || '#E1F5FE' }}>
                   {c.icon || '🏫'}
                 </div>
-                <div>
+                 <div>
                   <h4 className="text-2xl font-black text-[#5D4037]">{c.name}</h4>
                   <p className="text-[#0288D1] font-black text-sm uppercase tracking-tighter">{c.teacher || 'Sem professor'}</p>
+                  <p className="text-[10px] font-black text-[#81C784] uppercase tracking-widest mt-1">R$ {c.tuition_fee || 0} /mês</p>
                 </div>
               </div>
               

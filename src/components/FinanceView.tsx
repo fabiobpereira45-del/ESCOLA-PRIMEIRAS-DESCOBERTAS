@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { 
   DollarSign, FileText, Download, CheckCircle2, AlertCircle, Clock, 
   Printer, X, TrendingUp, TrendingDown, Wallet, Users, Package, 
-  Plus, Calendar, ChevronRight, Calculator
+  Plus, Calendar, ChevronRight, Calculator, Search, Filter, Percent
 } from 'lucide-react';
-import { FinancialRecord, Student, Teacher, Expense, Payroll } from '../types';
+import { FinancialRecord, Student, Teacher, Expense, Payroll, Class } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
@@ -13,14 +13,20 @@ interface FinanceViewProps {
   setRecords: (r: FinancialRecord[]) => void;
   students: Student[];
   teachers: Teacher[];
+  classes: Class[];
 }
 
-export default function FinanceView({ records, setRecords, students, teachers }: FinanceViewProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'incomes' | 'expenses' | 'payroll'>('dashboard');
+export default function FinanceView({ records, setRecords, students, teachers, classes }: FinanceViewProps) {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'incomes' | 'expenses' | 'payroll' | 'student_panel'>('dashboard');
   const [selectedDoc, setSelectedDoc] = useState<{ type: string; record: any } | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Filtros para Painel do Aluno
+  const [selectedTurma, setSelectedTurma] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [studentStatement, setStudentStatement] = useState<FinancialRecord[]>([]);
 
   // Load additional data
   useEffect(() => {
@@ -34,8 +40,17 @@ export default function FinanceView({ records, setRecords, students, teachers }:
     loadFinanceData();
   }, []);
 
-  const totalIncomes = records.filter(r => r.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
-  const pendingIncomes = records.filter(r => r.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+  useEffect(() => {
+    if (selectedStudentId) {
+      const studentRecords = records.filter(r => r.studentId === selectedStudentId);
+      setStudentStatement(studentRecords.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()));
+    } else {
+      setStudentStatement([]);
+    }
+  }, [selectedStudentId, records]);
+
+  const totalIncomes = records.filter(r => r.status === 'paid').reduce((acc, curr) => acc + (curr.amount - (curr.discount || 0)), 0);
+  const pendingIncomes = records.filter(r => r.status !== 'paid').reduce((acc, curr) => acc + (curr.amount - (curr.discount || 0)), 0);
   const totalExpenses = expenses.filter(e => e.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
   const ebitda = totalIncomes - totalExpenses;
 
@@ -47,13 +62,16 @@ export default function FinanceView({ records, setRecords, students, teachers }:
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const dueDate = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-10`;
 
-    const newRecords = students.map(student => ({
-      student_id: student.id,
-      type: 'tuition',
-      amount: 850.00, // Valor padrão
-      due_date: dueDate,
-      status: 'pending'
-    }));
+    const newRecords = students.map(student => {
+      const studentClass = classes.find(c => c.name === student.turma);
+      return {
+        student_id: student.id,
+        type: 'tuition',
+        amount: studentClass?.tuitionFee || 850.00,
+        due_date: dueDate,
+        status: 'pending'
+      };
+    });
 
     try {
       const { data, error } = await supabase.from('financial_records').insert(newRecords).select();
@@ -81,14 +99,29 @@ export default function FinanceView({ records, setRecords, students, teachers }:
     }
   };
 
+  const applyDiscount = async (record: FinancialRecord) => {
+    const discountStr = prompt(`Informe o valor do desconto para esta mensalidade (Valor atual: R$ ${record.amount.toFixed(2)}):`, "0");
+    if (discountStr === null) return;
+    const discount = parseFloat(discountStr);
+    if (isNaN(discount)) return;
+
+    const { error } = await supabase.from('financial_records').update({ discount }).eq('id', record.id);
+    if (!error) {
+      setRecords(records.map(r => r.id === record.id ? { ...r, discount } : r));
+      alert('Desconto aplicado com sucesso! 🏷️');
+    }
+  };
+
+  const filteredStudents = students.filter(s => !selectedTurma || s.turma === selectedTurma);
+
   return (
     <div className="space-y-10">
       {/* Header com Tabs */}
       <div className="flex flex-col md:flex-row items-end justify-between gap-6">
         <div>
           <h2 className="text-4xl font-black text-[#01579B]">Gestão Financeira 💰</h2>
-          <div className="flex gap-2 mt-4">
-            {(['dashboard', 'incomes', 'expenses', 'payroll'] as const).map(tab => (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {(['dashboard', 'incomes', 'expenses', 'payroll', 'student_panel'] as const).map(tab => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -100,7 +133,8 @@ export default function FinanceView({ records, setRecords, students, teachers }:
               >
                 {tab === 'dashboard' ? 'Visão Geral' : 
                  tab === 'incomes' ? 'Receitas' : 
-                 tab === 'expenses' ? 'Despesas' : 'Folha'}
+                 tab === 'expenses' ? 'Despesas' : 
+                 tab === 'payroll' ? 'Folha' : 'Painel do Aluno'}
               </button>
             ))}
           </div>
@@ -216,7 +250,12 @@ export default function FinanceView({ records, setRecords, students, teachers }:
                           </div>
                         </td>
                         <td className="px-10 py-6 text-gray-500 font-bold capitalize">{rec.type === 'tuition' ? 'Mensalidade' : 'Taxa'}</td>
-                        <td className="px-10 py-6 font-black text-lg">R$ {rec.amount.toFixed(2)}</td>
+                        <td className="px-10 py-6 font-black text-lg">
+                          <div className="flex flex-col">
+                            <span>R$ {(rec.amount - (rec.discount || 0)).toFixed(2)}</span>
+                            {rec.discount && <span className="text-[10px] text-red-400 line-through">R$ {rec.amount.toFixed(2)}</span>}
+                          </div>
+                        </td>
                         <td className="px-10 py-6 text-sm font-bold text-gray-400">{rec.dueDate}</td>
                         <td className="px-10 py-6">
                           <span className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase border-2 flex items-center w-fit gap-1 ${
@@ -244,6 +283,108 @@ export default function FinanceView({ records, setRecords, students, teachers }:
                 </tbody>
               </table>
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'student_panel' && (
+          <motion.div 
+            key="student_panel"
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            className="space-y-8"
+          >
+            {/* Seleção de Aluno */}
+            <div className="bg-white p-8 rounded-[48px] border-8 border-[#4FC3F7] shadow-xl grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Selecione a Turma</label>
+                <div className="relative">
+                  <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4FC3F7] w-5 h-5" />
+                  <select 
+                    value={selectedTurma} 
+                    onChange={e => { setSelectedTurma(e.target.value); setSelectedStudentId(''); }}
+                    className="w-full pl-12 pr-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-black text-[#01579B] outline-none focus:border-[#4FC3F7] appearance-none"
+                  >
+                    <option value="">Todas as Turmas</option>
+                    {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Selecione o Aluno</label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4FC3F7] w-5 h-5" />
+                  <select 
+                    value={selectedStudentId} 
+                    onChange={e => setSelectedStudentId(e.target.value)}
+                    className="w-full pl-12 pr-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-black text-[#01579B] outline-none focus:border-[#4FC3F7] appearance-none"
+                  >
+                    <option value="">Escolha um aluno...</option>
+                    {filteredStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {selectedStudentId && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                <div className="bg-white rounded-[48px] border-8 border-[#4FC3F7] shadow-2xl overflow-hidden">
+                  <div className="bg-[#E1F5FE] p-6 flex items-center justify-between border-b-4 border-[#4FC3F7]">
+                    <h3 className="text-xl font-black text-[#01579B] flex items-center gap-2">
+                      <FileText className="w-6 h-6" /> Extrato Financeiro Anual
+                    </h3>
+                    <div className="flex gap-3">
+                      <button className="bg-[#81C784] text-white px-6 py-2 rounded-full font-black text-[10px] border-b-4 border-[#388E3C] uppercase">DAR BAIXA EM LOTE</button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b-2">
+                          <th className="px-10 py-4">Parcela/Vencimento</th>
+                          <th className="px-10 py-4">Valor Original</th>
+                          <th className="px-10 py-4">Desconto</th>
+                          <th className="px-10 py-4">Valor Final</th>
+                          <th className="px-10 py-4">Status</th>
+                          <th className="px-10 py-4 text-right">Gerenciar</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y-2">
+                        {studentStatement.map((rec, i) => (
+                          <tr key={rec.id} className="hover:bg-gray-50">
+                            <td className="px-10 py-6">
+                              <p className="font-black text-[#01579B]">{i + 1}ª Mensalidade</p>
+                              <p className="text-xs font-bold text-gray-400">{new Date(rec.dueDate).toLocaleDateString('pt-BR')}</p>
+                            </td>
+                            <td className="px-10 py-6 font-bold text-gray-400 text-sm">R$ {rec.amount.toFixed(2)}</td>
+                            <td className="px-10 py-6 font-black text-red-400 text-sm">
+                              {rec.discount ? `- R$ ${rec.discount.toFixed(2)}` : '---'}
+                            </td>
+                            <td className="px-10 py-6 font-black text-lg text-[#01579B]">
+                              R$ {(rec.amount - (rec.discount || 0)).toFixed(2)}
+                            </td>
+                            <td className="px-10 py-6">
+                              <span className={`px-4 py-1 rounded-full text-[9px] font-black uppercase border-2 ${
+                                rec.status === 'paid' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-yellow-50 text-yellow-600 border-yellow-200'
+                              }`}>
+                                {rec.status === 'paid' ? 'PAGO' : 'PENDENTE'}
+                              </span>
+                            </td>
+                            <td className="px-10 py-6 text-right space-x-2">
+                              {rec.status !== 'paid' && (
+                                <>
+                                  <button onClick={() => applyDiscount(rec)} className="p-2 bg-[#BA68C8] text-white rounded-lg border-b-4 border-[#7B1FA2] hover:scale-110 transition-all"><Percent className="w-4 h-4" /></button>
+                                  <button onClick={() => markAsPaid(rec.id)} className="p-2 bg-[#81C784] text-white rounded-lg border-b-4 border-[#388E3C] hover:scale-110 transition-all"><CheckCircle2 className="w-4 h-4" /></button>
+                                </>
+                              )}
+                              <button className="p-2 bg-[#4FC3F7] text-white rounded-lg border-b-4 border-[#0288D1] hover:scale-110 transition-all"><Printer className="w-4 h-4" /></button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
 
@@ -368,7 +509,7 @@ export default function FinanceView({ records, setRecords, students, teachers }:
         )}
       </AnimatePresence>
 
-      {/* Modal de Documentos (Holerite/Comprovante) */}
+      {/* Modal de Documentos */}
       <AnimatePresence>
         {selectedDoc && (
           <motion.div 
@@ -444,7 +585,7 @@ export default function FinanceView({ records, setRecords, students, teachers }:
                       ) : (
                         <tr>
                           <td className="p-4 font-bold text-gray-600">Mensalidade Escolar</td>
-                          <td className="p-4 text-right font-black">{selectedDoc.record.amount.toFixed(2)}</td>
+                          <td className="p-4 text-right font-black">{(selectedDoc.record.amount - (selectedDoc.record.discount || 0)).toFixed(2)}</td>
                           <td className="p-4 text-right">0,00</td>
                         </tr>
                       )}
@@ -453,7 +594,7 @@ export default function FinanceView({ records, setRecords, students, teachers }:
                       <tr className="bg-[#F5FBFF] font-black text-[#01579B] border-t-4 border-[#E1F5FE]">
                         <td className="p-4 uppercase">Total Líquido</td>
                         <td colSpan={2} className="p-4 text-right text-2xl font-black">
-                          R$ {selectedDoc.type === 'holerite' ? '3.120,00' : selectedDoc.record.amount.toFixed(2)}
+                          R$ {selectedDoc.type === 'holerite' ? '3.120,00' : (selectedDoc.record.amount - (selectedDoc.record.discount || 0)).toFixed(2)}
                         </td>
                       </tr>
                     </tfoot>
