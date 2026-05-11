@@ -275,7 +275,7 @@ export default function App() {
               transition={{ duration: 0.2 }}
             >
               {currentView === 'dashboard' && <Dashboard students={students} announcements={announcements} financialRecords={financialRecords} />}
-              {currentView === 'attendance' && <AttendanceView students={students} />}
+              {currentView === 'attendance' && <AttendanceView students={students} classes={classes} />}
               {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView />}
@@ -1426,8 +1426,15 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
   );
 }
 
-function AttendanceView({ students }: { students: Student[] }) {
+function AttendanceView({ students, classes }: { students: Student[], classes: any[] }) {
+  const [selectedClass, setSelectedClass] = useState('Todas');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+  
+  const filteredStudents = students.filter(s => 
+    selectedClass === 'Todas' || s.turma === selectedClass
+  );
+
   const today = new Date().toLocaleDateString('pt-BR');
 
   const toggleAttendance = (id: string) => {
@@ -1445,13 +1452,41 @@ function AttendanceView({ students }: { students: Student[] }) {
           <h2 className="text-4xl font-black text-[#01579B]">Hora da Chamada! 📝</h2>
           <p className="text-[#546E7A] font-bold">Quem veio brincar na escola hoje?</p>
         </div>
-        <div className="bg-white px-8 py-4 rounded-[32px] border-4 border-[#E1F5FE] shadow-lg flex items-center gap-4">
-           <span className="text-3xl">📅</span>
-           <div className="text-left">
-             <p className="text-[10px] font-black text-[#78909C] uppercase tracking-widest">Data de Hoje</p>
-             <p className="font-black text-[#01579B] text-xl">{today}</p>
+      <div className="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-[40px] border-4 border-[#E1F5FE] shadow-lg">
+        <div className="flex-1 flex items-center gap-4 w-full">
+           <div className="p-3 bg-[#E1F5FE] rounded-2xl">
+             <Users className="w-6 h-6 text-[#0288D1]" />
+           </div>
+           <div className="flex-1">
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Filtrar por Turma</label>
+             <select 
+               value={selectedClass}
+               onChange={(e) => setSelectedClass(e.target.value)}
+               className="w-full bg-transparent font-black text-[#01579B] text-lg outline-none cursor-pointer"
+             >
+               <option value="Todas">Todas as Turmas</option>
+               {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+             </select>
            </div>
         </div>
+
+        <div className="h-10 w-1 bg-gray-100 hidden md:block" />
+
+        <div className="flex-1 flex items-center gap-4 w-full">
+           <div className="p-3 bg-[#FFF9C4] rounded-2xl">
+             <Calendar className="w-6 h-6 text-[#F57F17]" />
+           </div>
+           <div className="flex-1">
+             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Data da Chamada</label>
+             <input 
+               type="date"
+               value={selectedDate}
+               onChange={(e) => setSelectedDate(e.target.value)}
+               className="w-full bg-transparent font-black text-[#F57F17] text-lg outline-none cursor-pointer"
+             />
+           </div>
+        </div>
+      </div>
       </div>
 
       <div className="bg-white rounded-[56px] border-8 border-[#81C784] shadow-2xl overflow-hidden">
@@ -1463,7 +1498,7 @@ function AttendanceView({ students }: { students: Student[] }) {
               <div className="text-right">
                 <p className="text-xs font-black text-[#2E7D32] opacity-60">PRESENTES</p>
                 <p className="text-2xl font-black text-[#2E7D32]">
-                   {Object.values(attendance).filter(Boolean).length} / {students.length}
+                   {Object.values(attendance).filter(Boolean).length} / {filteredStudents.length}
                 </p>
               </div>
               <button 
@@ -1476,7 +1511,12 @@ function AttendanceView({ students }: { students: Student[] }) {
         </div>
         
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-           {students.map(student => (
+           {filteredStudents.length === 0 ? (
+             <div className="col-span-full py-20 text-center space-y-4">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-4xl">🔎</div>
+                <p className="text-gray-400 font-bold">Nenhum aluno encontrado nesta turma.</p>
+             </div>
+           ) : filteredStudents.map(student => (
               <button 
                 key={student.id}
                 onClick={() => toggleAttendance(student.id)}
