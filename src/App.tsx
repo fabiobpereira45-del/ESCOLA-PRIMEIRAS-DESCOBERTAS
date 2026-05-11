@@ -291,7 +291,7 @@ export default function App() {
               {currentView === 'dashboard' && <Dashboard students={students} announcements={announcements} financialRecords={financialRecords} />}
               {currentView === 'subjects' && <SubjectsView subjects={subjects} setSubjects={setSubjects} />}
               {currentView === 'attendance' && <AttendanceView students={students} classes={classes} />}
-              {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} />}
+              {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} subjects={subjects} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView />}
               {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} occurrences={occurrences} setOccurrences={setOccurrences} />}
@@ -1778,7 +1778,7 @@ function AttendanceView({ students, classes }: { students: Student[], classes: a
   );
 }
 
-function TeachersView({ teachers, setTeachers }: { teachers: Teacher[], setTeachers: (t: Teacher[]) => void }) {
+function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[], setTeachers: (t: Teacher[]) => void, subjects: any[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1868,7 +1868,7 @@ function TeachersView({ teachers, setTeachers }: { teachers: Teacher[], setTeach
           icon="🍎"
           fields={[
             { key: 'name', label: 'Nome do Mestre', placeholder: 'Ex: Prof. João' },
-            { key: 'subject', label: 'Matéria', placeholder: 'Ex: Matemática' },
+            { key: 'subject', label: 'Matéria', type: 'select', options: subjects.map(s => ({ value: s.name, label: s.name })) },
             { key: 'classes', label: 'Turmas (separadas por vírgula)', placeholder: 'Ex: 1º Ano A, 2º Ano B' }
           ]}
           initialData={editingTeacher ? { ...editingTeacher, classes: editingTeacher.classes.join(', ') } : {}}
@@ -2471,6 +2471,18 @@ function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }:
                     />
                   </div>
                 </div>
+              ) : f.type === 'select' ? (
+                <select 
+                  required={f.required !== false}
+                  value={formData[f.key] || ''}
+                  onChange={e => setFormData({...formData, [f.key]: e.target.value})}
+                  className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#4FC3F7] outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Selecione uma opção...</option>
+                  {f.options?.map((opt: any) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               ) : (
                 <input 
                   required={f.required !== false}
