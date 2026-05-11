@@ -1984,19 +1984,33 @@ function CommunicationView({ announcements, setAnnouncements }: { announcements:
   }, []);
 
   const handleSave = async (data: any) => {
-    if (editingAnn) {
-      const { error } = await supabase.from('announcements').update(data).eq('id', editingAnn.id);
-      if (!error) {
-        setAnnouncements(announcements.map(a => a.id === editingAnn.id ? { ...a, ...data } : a));
+    try {
+      if (editingAnn) {
+        const { error } = await supabase.from('announcements').update(data).eq('id', editingAnn.id);
+        if (!error) {
+          setAnnouncements(announcements.map(a => a.id === editingAnn.id ? { ...a, ...data } : a));
+          alert('Recado atualizado com sucesso! ✨');
+        } else {
+          throw error;
+        }
+      } else {
+        const annData = { 
+          ...data, 
+          date: new Date().toLocaleDateString('pt-BR') 
+        };
+        const { data: newData, error } = await supabase.from('announcements').insert(annData).select();
+        if (!error && newData) {
+          setAnnouncements([newData[0] as any, ...announcements]);
+          alert('Novo recado publicado no mural! 🚀');
+        } else {
+          throw error;
+        }
       }
-    } else {
-      const annData = { ...data, date: new Date().toLocaleDateString('pt-BR') };
-      const { data: newData, error } = await supabase.from('announcements').insert(annData).select();
-      if (!error && newData) {
-        setAnnouncements([newData[0] as any, ...announcements]);
-      }
+      setIsModalOpen(false);
+    } catch (error: any) {
+      console.error('Error saving announcement:', error);
+      alert('Erro ao salvar recado: ' + (error.message || 'Erro desconhecido'));
     }
-    setIsModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -2016,7 +2030,17 @@ function CommunicationView({ announcements, setAnnouncements }: { announcements:
           fields={[
             { key: 'title', label: 'Título do Recado', placeholder: 'Ex: Reunião de Pais' },
             { key: 'content', label: 'Mensagem', placeholder: 'Ex: Lembramos que amanhã...' },
-            { key: 'target', label: 'Público (all, parents, teachers)', placeholder: 'Ex: parents' }
+            { 
+              key: 'target', 
+              label: 'Público Alvo', 
+              type: 'select', 
+              options: [
+                { value: 'all', label: '📢 Todos' },
+                { value: 'parents', label: '👨‍👩‍👧‍👦 Pais e Responsáveis' },
+                { value: 'teachers', label: '🍎 Professores' },
+                { value: 'students', label: '🎒 Alunos' }
+              ] 
+            }
           ]}
           initialData={editingAnn || { target: 'all' }}
           onSubmit={handleSave}
