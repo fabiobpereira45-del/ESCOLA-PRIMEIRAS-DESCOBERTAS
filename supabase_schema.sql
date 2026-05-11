@@ -160,6 +160,31 @@ CREATE TABLE IF NOT EXISTS public.school_info (
     CONSTRAINT single_row CHECK (id = 1)
 );
 
+-- 14. Tabela de Despesas (expenses)
+CREATE TABLE IF NOT EXISTS public.expenses (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    description TEXT NOT NULL,
+    amount NUMERIC(10,2) NOT NULL,
+    due_date DATE NOT NULL,
+    payment_date DATE,
+    category TEXT NOT NULL, -- Salários, Produtos, Serviços, Infraestrutura, Outros
+    status TEXT DEFAULT 'pending' -- pending, paid
+);
+
+-- 15. Tabela de Folha de Pagamento (payroll)
+CREATE TABLE IF NOT EXISTS public.payroll (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    teacher_id UUID REFERENCES public.teachers(id) ON DELETE SET NULL,
+    base_salary NUMERIC(10,2) NOT NULL,
+    bonus NUMERIC(10,2) DEFAULT 0,
+    deductions NUMERIC(10,2) DEFAULT 0,
+    net_salary NUMERIC(10,2) NOT NULL,
+    reference_month TEXT NOT NULL, -- MM/YYYY
+    status TEXT DEFAULT 'draft' -- draft, paid
+);
+
 -- ==========================================
 -- DESABILITAR RLS (Para permitir salvamento com chave anon)
 -- ==========================================
@@ -178,6 +203,8 @@ ALTER TABLE public.directive DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.albums DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_occurrences DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_info DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payroll DISABLE ROW LEVEL SECURITY;
 
 -- Opcional: Se preferir MANTER o RLS ativo mas permitir acesso total (menos seguro, mas funciona):
 -- CREATE POLICY "Permitir tudo" ON public.announcements FOR ALL USING (true) WITH CHECK (true);

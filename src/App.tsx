@@ -263,7 +263,10 @@ export default function App() {
               <button className="bg-[#81C784] hover:bg-white/10 text-white font-black py-2 px-4 rounded-2xl border-b-4 border-[#388E3C] text-sm flex items-center gap-2">
                 <span>📢 Mural</span>
               </button>
-              <button className="bg-[#FFF176] text-[#5D4037] font-black py-2 px-4 rounded-2xl border-b-4 border-[#FBC02D] text-sm flex items-center gap-2">
+              <button 
+                onClick={() => setCurrentView('financial')}
+                className="bg-[#FFF176] text-[#5D4037] font-black py-2 px-4 rounded-2xl border-b-4 border-[#FBC02D] text-sm flex items-center gap-2 hover:scale-105 transition-all"
+              >
                 <span>💰 Caixa</span>
               </button>
             </div>
@@ -299,7 +302,7 @@ export default function App() {
               {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} occurrences={occurrences} setOccurrences={setOccurrences} />}
               {currentView === 'classes' && <ClassesView classes={classes} setClasses={setClasses} students={students} />}
               {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
-              {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} />}
+              {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} students={students} teachers={teachers} />}
               {currentView === 'carne' && <CarneView students={students} financialRecords={financialRecords} schoolInfo={schoolInfo} />}
               {currentView === 'ead' && <EADPortal />}
               {currentView === 'inventory' && <InventoryView items={inventory} setItems={setInventory} />}

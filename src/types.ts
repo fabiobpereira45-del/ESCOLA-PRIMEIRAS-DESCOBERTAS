@@ -102,3 +102,24 @@ export interface DirectiveMember {
   email?: string;
   phone?: string;
 }
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  payment_date?: string;
+  category: string;
+  status: 'pending' | 'paid';
+}
+
+export interface Payroll {
+  id: string;
+  teacher_id: string;
+  base_salary: number;
+  bonus: number;
+  deductions: number;
+  net_salary: number;
+  reference_month: string;
+  status: 'draft' | 'paid';
+}
