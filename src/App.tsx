@@ -80,13 +80,16 @@ export default function App() {
   ]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [classes, setClasses] = useState([
-    { id: '1', name: 'G 3 - Matutino', teacher: 'Prof. Márcia', students: 3, color: '#FF8A65', border: '#D84315', icon: '🦁' },
-    { id: '2', name: 'G 4', teacher: 'Prof. Ricardo', students: 1, color: '#4FC3F7', border: '#0288D1', icon: '🐳' },
-    { id: '3', name: 'G 5 - Matutino', teacher: 'Profª. Ana', students: 5, color: '#FFF176', border: '#FBC02D', icon: '🦊' },
-    { id: '4', name: '1º Ano', teacher: 'Prof. João', students: 8, color: '#81C784', border: '#388E3C', icon: '🐸' },
-    { id: '5', name: '2º Ano', teacher: 'Profª. Clara', students: 7, color: '#FF5252', border: '#D50000', icon: '🐞' },
-    { id: '6', name: '4º Ano', teacher: 'Prof. Pedro', students: 7, color: '#4FC3F7', border: '#0288D1', icon: '🦉' },
-    { id: '7', name: '5º Ano', teacher: 'Profª. Sônia', students: 15, color: '#FF8A65', border: '#D84315', icon: '🦁' },
+    { id: '1', name: 'G1', teacher: 'Prof. Márcia', color: '#FF8A65', border: '#D84315', icon: '🐣' },
+    { id: '2', name: 'G2', teacher: 'Prof. Ricardo', color: '#4FC3F7', border: '#0288D1', icon: '🐥' },
+    { id: '3', name: 'G3', teacher: 'Profª. Ana Clara', color: '#FFF176', border: '#FBC02D', icon: '🦁' },
+    { id: '4', name: 'G4', teacher: 'Prof. João', color: '#81C784', border: '#388E3C', icon: '🐸' },
+    { id: '5', name: 'G5', teacher: 'Profª. Bia', color: '#FF5252', border: '#D50000', icon: '🐞' },
+    { id: '6', name: '1º Ano', teacher: 'Prof. Pedro', color: '#4FC3F7', border: '#0288D1', icon: '🦉' },
+    { id: '7', name: '2º Ano', teacher: 'Profª. Sônia', color: '#FF8A65', border: '#D84315', icon: '🐘' },
+    { id: '8', name: '3º Ano', teacher: 'Prof. Marcos', color: '#81C784', border: '#388E3C', icon: '🦖' },
+    { id: '9', name: '4º Ano', teacher: 'Profª. Helô', color: '#FFF176', border: '#FBC02D', icon: '🦋' },
+    { id: '10', name: '5º Ano', teacher: 'Prof. Lucca', color: '#FF5252', border: '#D50000', icon: '🦅' },
   ]);
   const [inventory, setInventory] = useState([
     { id: '1', name: 'Giz Colorido', stock: 45, min: 20, unit: 'Caixas', icon: '🖍️' },
@@ -277,6 +280,7 @@ export default function App() {
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView />}
               {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} />}
+              {currentView === 'classes' && <ClassesView classes={classes} setClasses={setClasses} students={students} />}
               {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
               {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} />}
               {currentView === 'carne' && <CarneView students={students} financialRecords={financialRecords} schoolInfo={schoolInfo} />}
@@ -949,6 +953,129 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ClassesView({ classes, setClasses, students }: { classes: any[], setClasses: (c: any[]) => void, students: Student[] }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<any>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setDeletingId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const handleSave = async (data: any) => {
+    const classData = { ...data };
+    if (editingClass) {
+      const { error } = await supabase.from('classes').update(classData).eq('id', editingClass.id);
+      if (!error) {
+        setClasses(classes.map(c => c.id === editingClass.id ? { ...c, ...classData } : c));
+      }
+    } else {
+      const { data: newData, error } = await supabase.from('classes').insert(classData).select();
+      if (!error && newData) {
+        setClasses([...classes, newData[0]]);
+      }
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('classes').delete().eq('id', id);
+    if (!error) {
+      setClasses(classes.filter(c => c.id !== id));
+    }
+    setDeletingId(null);
+  };
+
+  return (
+    <div className="space-y-10">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#01579B]">Nossas Turmas 🏫</h2>
+          <p className="text-[#546E7A] font-bold">Gerencie as salas e turmas da escola</p>
+        </div>
+        <button 
+          onClick={() => { setEditingClass(null); setIsModalOpen(true); }}
+          className="px-8 py-4 bg-[#4FC3F7] text-white rounded-[32px] font-black border-b-8 border-[#0288D1] shadow-xl flex items-center gap-3 transform hover:scale-105 transition-all"
+        >
+          <PlusCircle className="w-6 h-6" />
+          <span>NOVA TURMA</span>
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <MagicFormModal 
+            title={editingClass ? "Editar Turma" : "Nova Turma"}
+            icon="🏫"
+            fields={[
+              { key: 'name', label: 'Nome da Turma', placeholder: 'Ex: G3 - Matutino' },
+              { key: 'teacher', label: 'Professor(a) Responsável', placeholder: 'Ex: Profª. Márcia' },
+              { key: 'icon', label: 'Ícone (Emoji)', placeholder: 'Ex: 🦁' },
+              { key: 'color', label: 'Cor de Fundo (Hex)', placeholder: 'Ex: #FF8A65' },
+              { key: 'border', label: 'Cor da Borda (Hex)', placeholder: 'Ex: #D84315' }
+            ]}
+            initialData={editingClass}
+            onSubmit={handleSave}
+            onClose={() => setIsModalOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Excluir Turma?"
+            message="Tem certeza que deseja remover esta turma? Os alunos continuarão no sistema."
+            confirmText="SIM, EXCLUIR"
+            cancelText="CANCELAR"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {classes.map(c => {
+          const studentCount = students.filter(s => s.turma === c.name).length;
+          return (
+            <div key={c.id} className="bg-white p-8 rounded-[48px] shadow-2xl border-l-8 border-b-8 relative group hover:scale-[1.02] transition-transform" style={{ borderColor: c.border || '#0288D1' }}>
+              <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => { setEditingClass(c); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
+                <button onClick={() => setDeletingId(c.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer"><Trash2 className="w-5 h-5" /></button>
+              </div>
+              
+              <div className="flex items-center gap-6">
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl shadow-inner" style={{ backgroundColor: c.color || '#E1F5FE' }}>
+                  {c.icon || '🏫'}
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black text-[#5D4037]">{c.name}</h4>
+                  <p className="text-[#0288D1] font-black text-sm uppercase tracking-tighter">{c.teacher || 'Sem professor'}</p>
+                </div>
+              </div>
+              
+              <div className="mt-8 flex items-center justify-between bg-gray-50 p-4 rounded-2xl border-2 border-dashed border-gray-100">
+                <div className="flex items-center gap-2">
+                   <Users className="w-5 h-5 text-gray-400" />
+                   <span className="font-black text-gray-600 uppercase text-xs">{studentCount} ALUNOS MATRICULADOS</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
