@@ -394,7 +394,7 @@ function Dashboard({ students, announcements, financialRecords }: { students: St
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {announcements.slice(0, 4).map(ann => (
                 <div key={ann.id} className="p-6 rounded-[32px] bg-[#FBE9E7] border-l-8 border-[#FF5722] shadow-sm flex flex-col hover:bg-[#FFCCBC] transition-colors cursor-pointer">
-                  <h4 className="font-black text-[#D84315] text-lg mb-2">{ann.title}</h4>
+                  <h4 className="font-black text-[#D84315] text-lg mb-2 capitalize">{ann.title}</h4>
                   <p className="text-sm text-[#BF360C] font-medium leading-relaxed flex-1">{ann.content}</p>
                   <p className="text-[10px] text-[#FF5722] mt-4 font-black uppercase tracking-widest bg-white/50 self-start px-3 py-1 rounded-full">{ann.date}</p>
                 </div>
@@ -2082,8 +2082,8 @@ function CommunicationView({ announcements, setAnnouncements }: { announcements:
                <div className="w-16 h-16 bg-[#FFF9C4] rounded-3xl border-4 border-[#FBC02D] flex items-center justify-center shadow-inner">
                  <span className="text-3xl">🔔</span>
                </div>
-               <div>
-                 <h3 className="text-2xl font-black text-[#D84315]">{ann.title}</h3>
+                <div>
+                  <h3 className="text-2xl font-black text-[#D84315] capitalize">{ann.title}</h3>
                  <p className="text-xs text-[#FF8A65] font-black uppercase tracking-widest bg-white/80 self-start px-3 py-1 rounded-full border border-[#FF8A65]/20 mt-1">{ann.date} • Para: {ann.target}</p>
                </div>
              </div>
