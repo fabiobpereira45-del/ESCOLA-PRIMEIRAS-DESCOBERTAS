@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   BookOpen, Users, CheckCircle2, AlertCircle, Clock,
-  Edit3, Trash2, ChevronRight, ArrowLeft,
+  Edit3, Trash2, ChevronRight, ArrowLeft, FileText, Printer, Award, Download
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -234,8 +234,189 @@ function SubjectStep({ cls, idx, subjects, grades, students, onSelect, onBack }:
   );
 }
 
+// ─── Step 4: Boletim View ────────────────────────────────────────────────────
+function BoletimView({
+  student,
+  allGrades,
+  subjects,
+  onBack,
+  cls,
+  idx
+}: {
+  student: Student;
+  allGrades: StudentGrade[];
+  subjects: string[];
+  onBack: () => void;
+  cls: ClassItem;
+  idx: number;
+}) {
+  const c = getColor(cls, idx);
+
+  const getGrade = (subject: string, period: string) => {
+    return allGrades.find(g => g.student_id === student.id && g.subject === subject && g.period === period)?.value ?? null;
+  };
+
+  const getSubjectAverage = (subject: string) => {
+    const grades = PERIODS.map(p => getGrade(subject, p));
+    return avg(grades);
+  };
+
+  const overallAverage = avg(subjects.map(s => getSubjectAverage(s)));
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between gap-4 no-print">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-2 bg-white border-2 border-[#4FC3F7] rounded-xl hover:bg-[#E1F5FE] transition shadow-sm">
+            <ArrowLeft className="w-5 h-5 text-[#0288D1]" />
+          </button>
+          <div>
+            <h2 className="text-3xl font-black text-[#01579B]">Boletim Escolar</h2>
+            <p className="text-[#546E7A] font-bold">Registro de desempenho acadêmico</p>
+          </div>
+        </div>
+        <button
+          onClick={() => window.print()}
+          className="px-6 py-3 bg-[#4FC3F7] text-white rounded-2xl font-black border-b-4 border-[#0288D1] shadow-lg flex items-center gap-2 hover:scale-105 transition-all"
+        >
+          <Printer className="w-5 h-5" />
+          IMPRIMIR
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[40px] border-4 shadow-2xl overflow-hidden print:border-0 print:shadow-none" style={{ borderColor: c.border }}>
+        {/* Report Card Header */}
+        <div className="p-8 border-b-4 border-dashed" style={{ borderColor: c.border, backgroundColor: c.bg }}>
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="w-32 h-32 rounded-[32px] border-4 border-white shadow-xl overflow-hidden bg-white shrink-0">
+              {student.photo_url ? (
+                <img src={student.photo_url} alt={student.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-4xl font-black" style={{ color: c.text }}>
+                  {student.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
+                <span className="px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest text-white" style={{ backgroundColor: c.border }}>
+                  {cls.name}
+                </span>
+                <span className="text-sm font-bold text-[#78909C]">Ano Letivo 2026</span>
+              </div>
+              <h1 className="text-4xl font-black text-[#37474F] mb-1">{student.name}</h1>
+              <p className="font-bold text-[#546E7A] flex items-center justify-center md:justify-start gap-2">
+                <Award className="w-4 h-4 text-[#FBC02D]" />
+                Escola Primeiras Descobertas
+              </p>
+            </div>
+            <div className="hidden lg:block text-right">
+              <div className="p-4 bg-white/60 rounded-3xl border-2 border-white shadow-inner">
+                <p className="text-[10px] font-black uppercase text-[#78909C]">Média Geral</p>
+                <p className="text-4xl font-black" style={{ color: overallAverage && overallAverage >= 7 ? '#388E3C' : '#E64A19' }}>
+                  {overallAverage ? overallAverage.toFixed(1) : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Grades Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b-2 border-gray-100">
+                <th className="px-8 py-5 text-left font-black text-[#546E7A] uppercase text-xs tracking-wider">Disciplina</th>
+                {PERIODS.map(p => (
+                  <th key={p} className="px-4 py-5 text-center font-black text-[#546E7A] uppercase text-xs tracking-wider w-24">
+                    {p.split(' ')[0]}
+                  </th>
+                ))}
+                <th className="px-8 py-5 text-center font-black text-[#01579B] uppercase text-xs tracking-wider w-32 bg-[#E1F5FE]/30">Média</th>
+                <th className="px-8 py-5 text-center font-black text-[#546E7A] uppercase text-xs tracking-wider">Situação</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {subjects.map((sub, i) => {
+                const subAvg = getSubjectAverage(sub);
+                const status = gradeStatus(subAvg);
+                const StatusIcon = status.icon;
+
+                return (
+                  <tr key={sub} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-[#E1F5FE]/10 transition-colors`}>
+                    <td className="px-8 py-5 font-bold text-[#37474F]">{sub}</td>
+                    {PERIODS.map(p => {
+                      const val = getGrade(sub, p);
+                      return (
+                        <td key={p} className="px-4 py-5 text-center font-black">
+                          <span className={val !== null ? (val >= 7 ? 'text-[#388E3C]' : 'text-[#E64A19]') : 'text-gray-300'}>
+                            {val !== null ? val.toFixed(1) : '—'}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td className="px-8 py-5 text-center font-black text-lg bg-[#E1F5FE]/20">
+                      <span style={{ color: status.color }}>
+                        {subAvg !== null ? subAvg.toFixed(1) : '—'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="px-4 py-1.5 rounded-full flex items-center gap-2 border-2" style={{ borderColor: status.color + '40', backgroundColor: status.color + '10' }}>
+                          <StatusIcon className="w-3 h-3" style={{ color: status.color }} />
+                          <span className="text-[10px] font-black uppercase" style={{ color: status.color }}>{status.label}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer Summary */}
+        <div className="p-10 bg-gray-50 border-t-4 border-dashed" style={{ borderColor: c.border }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="space-y-2">
+              <h4 className="text-xs font-black uppercase text-[#78909C]">Observações</h4>
+              <div className="h-24 bg-white rounded-2xl border-2 border-gray-200 p-4 text-sm text-gray-400 italic">
+                Espaço para comentários do professor...
+              </div>
+            </div>
+            <div className="space-y-6 flex flex-col justify-end">
+              <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2">
+                <span className="font-bold text-[#546E7A]">Dias Letivos:</span>
+                <span className="font-black text-[#37474F]">200</span>
+              </div>
+              <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2">
+                <span className="font-bold text-[#546E7A]">Faltas Totais:</span>
+                <span className="font-black text-[#E64A19]">0</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center text-center space-y-4">
+              <div className="w-48 border-b-2 border-[#37474F] pt-12"></div>
+              <p className="text-xs font-black uppercase text-[#37474F]">Assinatura da Coordenação</p>
+              <p className="text-[9px] text-[#78909C]">Documento gerado em {new Date().toLocaleDateString('pt-BR')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body * { visibility: hidden; }
+          .print-content, .print-content * { visibility: visible; }
+          .print-content { position: absolute; left: 0; top: 0; width: 100%; }
+          .no-print { display: none !important; }
+        }
+      ` }} />
+    </div>
+  );
+}
+
 // ─── Step 3: Grade Entry ──────────────────────────────────────────────────────
-function GradeEntry({ cls, idx, subject, students, allGrades, onSave, onDelete, onBack, saving }: {
+function GradeEntry({ cls, idx, subject, students, allGrades, onSave, onDelete, onBack, onViewBoletim, saving }: {
   cls: ClassItem;
   idx: number;
   subject: string;
@@ -244,6 +425,7 @@ function GradeEntry({ cls, idx, subject, students, allGrades, onSave, onDelete, 
   onSave: (g: StudentGrade) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onBack: () => void;
+  onViewBoletim: (s: Student) => void;
   saving: boolean;
 }) {
   const [activePeriod, setActivePeriod] = useState(PERIODS[0]);
@@ -355,12 +537,21 @@ function GradeEntry({ cls, idx, subject, students, allGrades, onSave, onDelete, 
                     </div>
                   </div>
                   <GradeCell value={g?.value ?? null} onChange={v => handleChange(student, v)} saving={saving} />
-                  {g?.id && (
-                    <button onClick={() => handleDelete(student)} disabled={saving}
-                      className="p-2 text-[#EF9A9A] hover:text-[#B71C1C] hover:bg-[#FFEBEE] rounded-xl transition-all" title="Remover nota">
-                      <Trash2 className="w-4 h-4" />
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => onViewBoletim(student)}
+                      className="p-2 text-[#4FC3F7] hover:text-[#0288D1] hover:bg-[#E1F5FE] rounded-xl transition-all"
+                      title="Ver Boletim Completo"
+                    >
+                      <FileText className="w-4 h-4" />
                     </button>
-                  )}
+                    {g?.id && (
+                      <button onClick={() => handleDelete(student)} disabled={saving}
+                        className="p-2 text-[#EF9A9A] hover:text-[#B71C1C] hover:bg-[#FFEBEE] rounded-xl transition-all" title="Remover nota">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -387,7 +578,7 @@ function GradeEntry({ cls, idx, subject, students, allGrades, onSave, onDelete, 
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-type Step = 'turma' | 'subject' | 'grades';
+type Step = 'turma' | 'subject' | 'grades' | 'boletim';
 
 export default function GradesView() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -401,6 +592,7 @@ export default function GradesView() {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [selectedClassIdx, setSelectedClassIdx] = useState(0);
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -477,7 +669,14 @@ export default function GradesView() {
           {selectedSubject && (
             <>
               <ChevronRight className="w-4 h-4" />
-              <span className="text-[#0277BD]">{selectedSubject}</span>
+              <button onClick={() => { setStep('grades'); setSelectedStudent(null); }}
+                className="hover:text-[#0288D1] transition-colors">{selectedSubject}</button>
+            </>
+          )}
+          {selectedStudent && (
+            <>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-[#0277BD]">Boletim: {selectedStudent.name}</span>
             </>
           )}
         </div>
@@ -518,8 +717,22 @@ export default function GradesView() {
           onSave={handleSave}
           onDelete={handleDelete}
           onBack={() => { setStep('subject'); setSelectedSubject(''); }}
+          onViewBoletim={(s) => { setSelectedStudent(s); setStep('boletim'); }}
           saving={saving}
         />
+      )}
+
+      {step === 'boletim' && selectedClass && selectedStudent && (
+        <div className="print-content">
+          <BoletimView
+            student={selectedStudent}
+            allGrades={grades}
+            subjects={subjects}
+            cls={selectedClass}
+            idx={selectedClassIdx}
+            onBack={() => { setStep('grades'); setSelectedStudent(null); }}
+          />
+        </div>
       )}
     </div>
   );
