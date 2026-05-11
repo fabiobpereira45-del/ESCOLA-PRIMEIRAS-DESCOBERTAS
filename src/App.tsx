@@ -1089,6 +1089,7 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
 function ClassesView({ classes, setClasses, students }: { classes: any[], setClasses: (c: any[]) => void, students: Student[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<any>(null);
+  const [viewingClass, setViewingClass] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1096,6 +1097,7 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
       if (e.key === 'Escape') {
         setIsModalOpen(false);
         setDeletingId(null);
+        setViewingClass(null);
       }
     };
     window.addEventListener('keydown', handleEsc);
@@ -1201,16 +1203,91 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
                 </div>
               </div>
               
-              <div className="mt-8 flex items-center justify-between bg-gray-50 p-4 rounded-2xl border-2 border-dashed border-gray-100">
+              <div className="mt-8 flex items-center justify-between bg-gray-50 p-4 rounded-3xl border-2 border-dashed border-gray-100">
                 <div className="flex items-center gap-2">
                    <Users className="w-5 h-5 text-gray-400" />
-                   <span className="font-black text-gray-600 uppercase text-xs">{studentCount} ALUNOS MATRICULADOS</span>
+                   <span className="font-black text-gray-600 uppercase text-[10px]">{studentCount} ALUNOS</span>
                 </div>
+                <button 
+                  onClick={() => setViewingClass(c)}
+                  className="px-4 py-2 bg-white text-[#0288D1] border-2 border-[#E1F5FE] rounded-2xl font-black text-[10px] hover:bg-[#E1F5FE] transition-all"
+                >
+                  VER ALUNOS 👁️
+                </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      <AnimatePresence>
+        {viewingClass && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-[56px] border-8 p-10 max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl relative flex flex-col"
+              style={{ borderColor: viewingClass.color || '#4FC3F7' }}
+            >
+               <button onClick={() => setViewingClass(null)} className="absolute top-6 right-6 p-2 bg-gray-100 text-gray-400 rounded-full hover:rotate-90 transition-transform">
+                 <X className="w-6 h-6" />
+               </button>
+
+               <div className="flex items-center gap-6 mb-8">
+                 <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl shadow-inner" style={{ backgroundColor: viewingClass.color || '#E1F5FE' }}>
+                   {viewingClass.icon || '🏫'}
+                 </div>
+                 <div>
+                   <h3 className="text-3xl font-black text-[#5D4037]">{viewingClass.name}</h3>
+                   <p className="text-[#0288D1] font-black uppercase italic tracking-widest flex items-center gap-2">
+                     <span className="text-xs opacity-50">PROFESSOR(A):</span> {viewingClass.teacher || 'A DEFINIR'}
+                   </p>
+                 </div>
+               </div>
+
+               <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+                 <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                   <div className="w-8 h-1 bg-gray-200 rounded-full" /> LISTA DE EXPLORADORES
+                 </h4>
+                 
+                 {students.filter(s => s.turma === viewingClass.name).length === 0 ? (
+                   <div className="bg-gray-50 rounded-3xl p-10 text-center border-4 border-dashed border-gray-100">
+                     <p className="text-gray-400 font-bold uppercase text-sm">Nenhum aventureiro nesta turma ainda! 🎒</p>
+                   </div>
+                 ) : (
+                   <div className="grid grid-cols-1 gap-3">
+                     {students
+                       .filter(s => s.turma === viewingClass.name)
+                       .sort((a, b) => a.name.localeCompare(b.name))
+                       .map(s => (
+                       <div key={s.id} className="flex items-center gap-4 p-4 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-3xl hover:border-[#4FC3F7] transition-all">
+                          <div className={`w-12 h-12 rounded-xl border-2 border-white shadow-sm overflow-hidden flex items-center justify-center text-xl ${s.gender === 'F' ? 'bg-[#FFF5F8]' : 'bg-[#F0F7FF]'}`}>
+                            {s.photo_url || s.photoUrl ? <img src={s.photo_url || s.photoUrl} className="w-full h-full object-cover" /> : (s.gender === 'F' ? '👧' : '👦')}
+                          </div>
+                          <div>
+                            <p className="font-black text-[#5D4037]">{s.name}</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">RA: {(s as any).registration_number || '---'}</p>
+                          </div>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+
+               <div className="mt-8 pt-6 border-t-4 border-dashed border-gray-100 flex justify-center">
+                 <button 
+                  onClick={() => setViewingClass(null)}
+                  className="px-10 py-3 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs hover:bg-gray-200 transition-all uppercase tracking-widest"
+                 >
+                   Fechar Mural
+                 </button>
+               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
