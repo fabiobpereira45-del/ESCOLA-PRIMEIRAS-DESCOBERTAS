@@ -498,12 +498,15 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
     disability: false, disabilityDetails: '',
     surgery: false, surgeryDetails: '',
     gender: 'M' as 'M' | 'F',
-    photoUrl: ''
+    photoUrl: '',
+    registrationNumber: ''
   };
   const [newStudent, setNewStudent] = useState(defaultStudentState);
 
   const handleRegister = async (e: any) => {
     e.preventDefault();
+    const regNumber = newStudent.registrationNumber || `EPD-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
     const studentData = { 
       name: newStudent.name,
       grade: 'Novo', 
@@ -513,6 +516,7 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
       address: newStudent.address,
       additional_phone: newStudent.additionalPhone,
       photo_url: newStudent.photoUrl,
+      registration_number: regNumber,
       // Saúde
       medication: newStudent.medication,
       medication_details: newStudent.medicationDetails,
@@ -578,7 +582,8 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
       surgery: student.surgery || false,
       surgeryDetails: student.surgery_details || '',
       gender: (student.gender as 'M' | 'F') || 'M',
-      photoUrl: student.photo_url || student.photoUrl || ''
+      photoUrl: student.photo_url || student.photoUrl || '',
+      registrationNumber: student.registration_number || student.registrationNumber || ''
     });
     setEditingId(student.id);
     setIsRegistering(true);
@@ -627,9 +632,12 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
     
     // Header background
     doc.setFillColor(schoolInfo.primaryColor);
-    doc.rect(0, 0, 210, 40, 'F');
+    doc.rect(0, 0, 210, 45, 'F');
     
-    // Logo
+    let textX = 105;
+    let textAlign: "center" | "left" = "center";
+
+    // Logo with aspect ratio
     if (schoolInfo.logoUrl) {
       try {
         const logoImg = new Image();
@@ -637,10 +645,16 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
         logoImg.src = schoolInfo.logoUrl;
         await new Promise((resolve) => {
           logoImg.onload = resolve;
-          logoImg.onerror = resolve; // Continue even if logo fails
+          logoImg.onerror = resolve;
         });
         if (logoImg.complete && logoImg.naturalWidth !== 0) {
-          doc.addImage(logoImg, 'PNG', 15, 5, 30, 30);
+          const imgProps = (doc as any).getImageProperties(logoImg);
+          const ratio = imgProps.width / imgProps.height;
+          const h = 35;
+          const w = h * ratio;
+          doc.addImage(logoImg, 'PNG', 15, 5, w, h);
+          textX = 20 + w + 10; // Margin + logo + padding
+          textAlign = "left";
         }
       } catch (e) {
         console.warn("Could not load logo for PDF", e);
@@ -649,13 +663,14 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
     
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text(schoolInfo.name.toUpperCase(), 105, 20, { align: 'center' });
+    doc.setFontSize(20);
+    doc.text(schoolInfo.name.toUpperCase(), textX, 18, { align: textAlign });
     
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${schoolInfo.address} | Tel: ${schoolInfo.phone}`, 105, 30, { align: 'center' });
-    doc.text(`CNPJ: ${schoolInfo.cnpj} | Email: ${schoolInfo.email}`, 105, 35, { align: 'center' });
+    doc.text(`${schoolInfo.address}`, textX, 26, { align: textAlign });
+    doc.text(`Tel: ${schoolInfo.phone} | CNPJ: ${schoolInfo.cnpj}`, textX, 32, { align: textAlign });
+    doc.text(`Email: ${schoolInfo.email}`, textX, 38, { align: textAlign });
 
     // Title
     doc.setTextColor(1, 87, 155); // Dark blue
@@ -684,14 +699,19 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
     doc.setFont('helvetica', 'bold'); doc.text('Nome Completo:', 20, startY);
     doc.setFont('helvetica', 'normal'); doc.text(student.name, 60, startY);
 
-    doc.setFont('helvetica', 'bold'); doc.text('Série / Turma:', 20, startY + spacing);
-    doc.setFont('helvetica', 'normal'); doc.text(`${student.grade} • ${student.turma}`, 60, startY + spacing);
+    doc.setFont('helvetica', 'bold'); doc.text('Nº Matrícula:', 20, startY + spacing);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(216, 67, 21); // Orange accent
+    doc.text((student as any).registration_number || (student as any).registrationNumber || 'GERANDO...', 60, startY + spacing);
+    doc.setTextColor(60, 60, 60);
 
-    doc.setFont('helvetica', 'bold'); doc.text('Responsável:', 20, startY + spacing * 2);
-    doc.setFont('helvetica', 'normal'); doc.text(student.parentName || '---', 60, startY + spacing * 2);
+    doc.setFont('helvetica', 'bold'); doc.text('Série / Turma:', 20, startY + spacing * 2);
+    doc.setFont('helvetica', 'normal'); doc.text(`${student.grade} • ${student.turma}`, 60, startY + spacing * 2);
 
-    doc.setFont('helvetica', 'bold'); doc.text('Contato:', 20, startY + spacing * 3);
-    doc.setFont('helvetica', 'normal'); doc.text(student.parentContact || '---', 60, startY + spacing * 3);
+    doc.setFont('helvetica', 'bold'); doc.text('Responsável:', 20, startY + spacing * 3);
+    doc.setFont('helvetica', 'normal'); doc.text(student.parent_name || (student as any).parentName || '---', 60, startY + spacing * 3);
+
+    doc.setFont('helvetica', 'bold'); doc.text('Contato:', 20, startY + spacing * 4);
+    doc.setFont('helvetica', 'normal'); doc.text(student.parent_contact || (student as any).parentContact || '---', 60, startY + spacing * 4);
 
     // Declaration
     const text = schoolInfo.contractTemplate;
