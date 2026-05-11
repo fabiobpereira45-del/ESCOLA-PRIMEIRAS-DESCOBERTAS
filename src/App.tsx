@@ -971,8 +971,8 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
               { key: 'name', label: 'Nome da Turma', placeholder: 'Ex: G3 - Matutino' },
               { key: 'teacher', label: 'Professor(a) Responsável', placeholder: 'Ex: Profª. Márcia' },
               { key: 'icon', label: 'Ícone (Emoji)', placeholder: 'Ex: 🦁' },
-              { key: 'color', label: 'Cor de Fundo (Hex)', placeholder: 'Ex: #FF8A65' },
-              { key: 'border', label: 'Cor da Borda (Hex)', placeholder: 'Ex: #D84315' }
+              { key: 'color', label: 'Cor de Fundo', type: 'color' },
+              { key: 'border', label: 'Cor da Borda', type: 'color' }
             ]}
             initialData={editingClass}
             onSubmit={handleSave}
@@ -1717,14 +1717,44 @@ function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }:
           {fields.map((f: any) => (
             <div key={f.key} className="space-y-2">
               <label className="text-sm font-black text-[#0288D1] uppercase tracking-widest ml-1">{f.label}</label>
-              <input 
-                required={f.required !== false}
-                value={formData[f.key] || ''}
-                onChange={e => setFormData({...formData, [f.key]: e.target.value})}
-                type={f.type || 'text'}
-                className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#4FC3F7] outline-none transition-all"
-                placeholder={f.placeholder}
-              />
+              {f.type === 'color' ? (
+                <div className="grid grid-cols-5 gap-3 p-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px]">
+                  {['#4FC3F7', '#FF8A65', '#81C784', '#FFF176', '#FF5252', '#BA68C8', '#F06292', '#A1887F', '#90A4AE', '#37474F'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setFormData({...formData, [f.key]: c})}
+                      className={`w-full aspect-square rounded-xl border-4 transition-all hover:scale-110 ${formData[f.key] === c ? 'border-white ring-4 ring-[#4FC3F7] scale-105' : 'border-transparent shadow-sm'}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  <div className="col-span-5 flex items-center gap-4 mt-2 pt-2 border-t-2 border-dashed border-[#E1F5FE]">
+                    <span className="text-[10px] font-black text-gray-400 uppercase">Personalizada:</span>
+                    <input 
+                      type="color" 
+                      value={formData[f.key] || '#4FC3F7'}
+                      onChange={e => setFormData({...formData, [f.key]: e.target.value})}
+                      className="w-10 h-10 rounded-lg cursor-pointer bg-transparent"
+                    />
+                    <input 
+                      type="text"
+                      value={formData[f.key] || ''}
+                      onChange={e => setFormData({...formData, [f.key]: e.target.value})}
+                      className="flex-1 bg-white border-2 border-[#E1F5FE] rounded-lg px-3 py-1 font-mono text-xs font-bold"
+                      placeholder="#HEX"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <input 
+                  required={f.required !== false}
+                  value={formData[f.key] || ''}
+                  onChange={e => setFormData({...formData, [f.key]: e.target.value})}
+                  type={f.type || 'text'}
+                  className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#4FC3F7] outline-none transition-all"
+                  placeholder={f.placeholder}
+                />
+              )}
             </div>
           ))}
           
