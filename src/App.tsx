@@ -120,7 +120,12 @@ export default function App() {
       if (studentData) setStudents(studentData as any);
 
       const { data: teacherData } = await supabase.from('teachers').select('*');
-      if (teacherData) setTeachers(teacherData as any);
+      if (teacherData) {
+        setTeachers(teacherData.map(t => ({
+          ...t,
+          photoUrl: t.photo_url || t.photoUrl
+        })) as any);
+      }
 
       const { data: announcementData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
       if (announcementData) setAnnouncements(announcementData as any);
@@ -1670,20 +1675,62 @@ function TeachersView({ teachers, setTeachers }: { teachers: Teacher[], setTeach
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `teacher_${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('students') // Using same bucket for simplicity, or create 'teachers'
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('students')
+        .getPublicUrl(filePath);
+
+      setPhotoUrl(publicUrl);
+    } catch (error: any) {
+      alert('Erro no upload: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSave = async (data: any) => {
-    const teacherData = { ...data, classes: data.classes.split(',').map((c: string) => c.trim()) };
+    const teacherData = { 
+      name: data.name,
+      subject: data.subject,
+      classes: data.classes.split(',').map((c: string) => c.trim()),
+      photo_url: photoUrl || data.photoUrl || ''
+    };
+    
     if (editingTeacher) {
       const { error } = await supabase.from('teachers').update(teacherData).eq('id', editingTeacher.id);
       if (!error) {
-        setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...t, ...teacherData } : t));
+        setTeachers(teachers.map(t => t.id === editingTeacher.id ? { ...t, ...teacherData, photoUrl: teacherData.photo_url } : t));
+      } else {
+        alert('Erro ao atualizar: ' + error.message);
       }
     } else {
       const { data: newData, error } = await supabase.from('teachers').insert(teacherData).select();
       if (!error && newData) {
-        setTeachers([...teachers, newData[0] as any]);
+        setTeachers([...teachers, { ...newData[0], photoUrl: newData[0].photo_url } as any]);
+      } else {
+        alert('Erro ao cadastrar: ' + error.message);
       }
     }
     setIsModalOpen(false);
+    setPhotoUrl('');
   };
 
   const handleDelete = async (id: string) => {
@@ -1707,7 +1754,31 @@ function TeachersView({ teachers, setTeachers }: { teachers: Teacher[], setTeach
           ]}
           initialData={editingTeacher ? { ...editingTeacher, classes: editingTeacher.classes.join(', ') } : {}}
           onSubmit={handleSave}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => { setIsModalOpen(false); setPhotoUrl(''); }}
+          customContent={
+            <div className="space-y-4 mb-6">
+              <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Foto do Mestre</label>
+              <div className="flex items-center gap-6 p-6 bg-[#FFF9C4] rounded-[32px] border-4 border-[#FBC02D] border-dashed">
+                <div className="w-24 h-24 rounded-3xl bg-white border-4 border-[#FBC02D] overflow-hidden flex items-center justify-center text-4xl shadow-inner relative group">
+                  {(photoUrl || editingTeacher?.photoUrl) ? (
+                    <img src={photoUrl || editingTeacher?.photoUrl} className="w-full h-full object-cover" />
+                  ) : '👨‍🏫'}
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                       <div className="w-8 h-8 border-4 border-[#FBC02D] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-[#8D6E63] uppercase mb-2">Selecione uma foto bem bonita!</p>
+                  <label className="inline-block px-6 py-2 bg-white text-[#F57F17] rounded-xl font-black text-xs border-b-4 border-[#FBC02D] cursor-pointer hover:bg-orange-50 transition-colors">
+                    {isUploading ? 'CARREGANDO...' : 'ESCOLHER ARQUIVO'}
+                    <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
+                  </label>
+                </div>
+              </div>
+            </div>
+          }
         />
       )}
       <AnimatePresence>
