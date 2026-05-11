@@ -18,6 +18,7 @@ export interface Student {
   surgeryDetails?: string;
   neurodivergent?: boolean;
   neurodivergentReport?: boolean;
+  gender?: 'M' | 'F';
 }
 
 export interface Teacher {

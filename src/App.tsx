@@ -59,6 +59,7 @@ type View = 'dashboard' | 'students' | 'teachers' | 'grades' | 'communication' |
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [students, setStudents] = useState<Student[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [schoolInfo, setSchoolInfo] = useState({
@@ -145,7 +146,7 @@ export default function App() {
   }, []);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Início', icon: Home, color: '#4FC3F7', emoji: '🏠' },
+    { id: 'dashboard', label: 'Visão Geral', icon: Home, color: '#4FC3F7', emoji: '🏠' },
     { id: 'students', label: 'Alunos', icon: Users, color: '#FF8A65', emoji: '🎒' },
     { id: 'classes', label: 'Turmas', icon: Users, color: '#4FC3F7', emoji: '🏫' },
     { id: 'attendance', label: 'Chamada', icon: ClipboardList, color: '#81C784', emoji: '📝' },
@@ -224,6 +225,8 @@ export default function App() {
               <input 
                 type="text" 
                 placeholder="Procurar..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 bg-white/20 border-2 border-white/30 rounded-full w-64 focus:bg-white focus:text-gray-800 transition-all outline-none placeholder:text-white/60 text-white font-bold"
               />
             </div>
@@ -260,11 +263,12 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
             >
+              {currentView === 'dashboard' && <Dashboard students={students} announcements={announcements} financialRecords={financialRecords} />}
               {currentView === 'attendance' && <AttendanceView students={students} />}
               {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView />}
-              {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} />}
+              {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} />}
               {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
               {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} />}
               {currentView === 'carne' && <CarneView students={students} financialRecords={financialRecords} schoolInfo={schoolInfo} />}
@@ -291,38 +295,57 @@ export default function App() {
   );
 }
 
-function Dashboard({ students, announcements }: { students: Student[], announcements: Announcement[] }) {
+function Dashboard({ students, announcements, financialRecords }: { students: Student[], announcements: Announcement[], financialRecords: FinancialRecord[] }) {
+  const pendingPayments = financialRecords.filter(r => r.status === 'pending').length;
+  const overduePayments = financialRecords.filter(r => r.status === 'overdue').length;
+  const totalAmount = financialRecords.reduce((acc, r) => acc + r.amount, 0);
+
+  // Get birthdays in the current month
+  const currentMonth = new Date().getMonth();
+  const birthdayBoys = students.filter(s => {
+    if (!s.birthDate) return false;
+    const bDate = new Date(s.birthDate);
+    return bDate.getMonth() === currentMonth;
+  });
+
   return (
     <div className="space-y-10">
       <div className="flex items-end justify-between">
-        <div>
-          <h2 className="text-5xl font-black text-[#01579B]">Painel Geral 🚀</h2>
-          <p className="text-[#546E7A] font-bold text-lg mt-1 italic">Bem-vindo à Escola Primeiras Descobertas!</p>
+        <div className="animate-in fade-in slide-in-from-left duration-700">
+          <h2 className="text-5xl font-black text-[#01579B]">Resumo Escolar 🚀</h2>
+          <p className="text-[#546E7A] font-bold text-lg mt-1 italic">Tudo sob controle na Escola Primeiras Descobertas!</p>
         </div>
-        <button className="bg-[#FF5252] text-white py-4 px-8 rounded-[32px] border-b-8 border-[#D50000] font-black flex items-center gap-3 shadow-xl transform hover:-translate-y-1 transition-all active:translate-y-1">
-          <span className="text-2xl">💻</span> <span>PORTAL EAD</span>
-        </button>
+        <div className="flex gap-4">
+          <div className="hidden md:flex flex-col items-end justify-center px-6 py-2 bg-white rounded-3xl border-2 border-[#E1F5FE] shadow-sm">
+            <p className="text-[10px] font-black text-[#4FC3F7] uppercase">Data de Hoje</p>
+            <p className="font-black text-[#0277BD]">{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+          </div>
+          <button className="bg-[#FF5252] text-white py-4 px-8 rounded-[32px] border-b-8 border-[#D50000] font-black flex items-center gap-3 shadow-xl transform hover:-translate-y-1 transition-all active:translate-y-1">
+            <span className="text-2xl">💻</span> <span>AULA AO VIVO</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {[
-          { label: 'Turminha', count: students.length, color: '#4FC3F7', borderColor: '#0288D1', icon: '🎒', desc: 'Amiguinhos ativos' },
-          { label: 'Hoje na Escola', count: '94%', color: '#81C784', borderColor: '#388E3C', icon: '✅', desc: 'Frequência ideal' },
-          { label: 'Livros de Hist.', count: 12, color: '#FFF176', borderColor: '#FBC02D', icon: '📚', desc: 'Empréstimos' },
-          { label: 'Recadinhos', count: announcements.length, color: '#FF8A65', borderColor: '#D84315', icon: '📌', desc: 'Novos avisos' },
+          { label: 'Exploradores', count: students.length, color: '#4FC3F7', borderColor: '#0288D1', icon: '🎒', desc: 'Pequenos matriculados' },
+          { label: 'Frequência', count: '96%', color: '#81C784', borderColor: '#388E3C', icon: '✅', desc: 'Média mensal' },
+          { label: 'Pendências', count: pendingPayments + overduePayments, color: '#FFF176', borderColor: '#FBC02D', icon: '💰', desc: 'Mensalidades em aberto' },
+          { label: 'Avisos', count: announcements.length, color: '#FF8A65', borderColor: '#D84315', icon: '📌', desc: 'Recados no mural' },
         ].map((stat, i) => (
           <div 
             key={i} 
-            className="rounded-[40px] border-4 p-8 shadow-xl flex flex-col gap-2 relative overflow-hidden group transition-all hover:scale-105"
+            className="rounded-[40px] border-4 p-8 shadow-xl flex flex-col gap-2 relative overflow-hidden group transition-all hover:scale-105 hover:rotate-1"
             style={{ backgroundColor: stat.color, borderColor: stat.borderColor }}
           >
-            <div className="flex items-center justify-between">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500" />
+            <div className="flex items-center justify-between relative z-10">
               <span className="text-5xl drop-shadow-md">{stat.icon}</span>
-              <p className="text-white font-black text-xs uppercase tracking-widest bg-black/10 px-3 py-1 rounded-full">{stat.label}</p>
+              <p className="text-white font-black text-[10px] uppercase tracking-widest bg-black/10 px-3 py-1 rounded-full">{stat.label}</p>
             </div>
-            <p className="text-4xl font-black text-white mt-4 drop-shadow-sm">{stat.count}</p>
-            <p className="text-white/80 font-bold text-xs">{stat.desc}</p>
+            <p className="text-4xl font-black text-white mt-4 drop-shadow-sm relative z-10">{stat.count}</p>
+            <p className="text-white/80 font-bold text-xs relative z-10">{stat.desc}</p>
           </div>
         ))}
       </div>
@@ -330,14 +353,18 @@ function Dashboard({ students, announcements }: { students: Student[], announcem
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Recent Announcements */}
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white p-8 rounded-[40px] border-4 border-[#FF8A65] shadow-2xl">
-            <div className="flex items-center gap-4 mb-8 border-b-4 border-dashed border-[#FF8A65] pb-6">
-              <span className="text-4xl">📌</span>
-              <h3 className="text-3xl font-black text-[#D84315]">Mural da Bagunça</h3>
+          <div className="bg-white p-8 rounded-[40px] border-4 border-[#FF8A65] shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF8A65]/5 -translate-y-32 translate-x-32 rounded-full" />
+            <div className="flex items-center justify-between mb-8 border-b-4 border-dashed border-[#FF8A65] pb-6">
+              <div className="flex items-center gap-4">
+                <span className="text-4xl">📌</span>
+                <h3 className="text-3xl font-black text-[#D84315]">Mural de Avisos</h3>
+              </div>
+              <span className="bg-[#FF8A65] text-white px-4 py-1 rounded-full text-xs font-black uppercase">Importante</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {announcements.map(ann => (
-                <div key={ann.id} className="p-6 rounded-[32px] bg-[#FBE9E7] border-l-8 border-[#FF5722] shadow-sm flex flex-col">
+              {announcements.slice(0, 4).map(ann => (
+                <div key={ann.id} className="p-6 rounded-[32px] bg-[#FBE9E7] border-l-8 border-[#FF5722] shadow-sm flex flex-col hover:bg-[#FFCCBC] transition-colors cursor-pointer">
                   <h4 className="font-black text-[#D84315] text-lg mb-2">{ann.title}</h4>
                   <p className="text-sm text-[#BF360C] font-medium leading-relaxed flex-1">{ann.content}</p>
                   <p className="text-[10px] text-[#FF5722] mt-4 font-black uppercase tracking-widest bg-white/50 self-start px-3 py-1 rounded-full">{ann.date}</p>
@@ -346,31 +373,85 @@ function Dashboard({ students, announcements }: { students: Student[], announcem
             </div>
             <button className="mt-8 w-full py-4 bg-[#FF8A65] text-white rounded-3xl font-black text-lg border-b-8 border-[#D84315] shadow-lg hover:brightness-110 active:translate-y-1 transition-all">VER TODOS OS RECADOS</button>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="bg-[#81C784] rounded-[40px] border-4 border-[#388E3C] p-8 shadow-2xl flex flex-col justify-between">
+                <div>
+                   <div className="flex items-center gap-3 mb-4">
+                      <span className="text-3xl">💹</span>
+                      <h3 className="text-2xl font-black text-white">Metas</h3>
+                   </div>
+                   <p className="text-white/90 font-bold mb-6">Estamos com 92% da meta de rematrículas atingida!</p>
+                </div>
+                <div className="space-y-2">
+                   <div className="h-4 bg-white/30 rounded-full overflow-hidden">
+                      <div className="h-full bg-white w-[92%] shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                   </div>
+                   <p className="text-right text-white font-black text-xs uppercase">Meta: 200 Alunos</p>
+                </div>
+             </div>
+             
+             <div className="bg-white rounded-[40px] border-4 border-[#4FC3F7] p-8 shadow-2xl">
+                <div className="flex items-center gap-3 mb-6">
+                   <span className="text-3xl">🎂</span>
+                   <h3 className="text-2xl font-black text-[#01579B]">Aniversários</h3>
+                </div>
+                <div className="space-y-4">
+                   {birthdayBoys.length > 0 ? (
+                     birthdayBoys.slice(0, 3).map((s, i) => (
+                       <div key={i} className="flex items-center gap-3 bg-[#E1F5FE] p-3 rounded-2xl border-b-2 border-[#4FC3F7]">
+                          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-sm shadow-inner">🎈</div>
+                          <p className="font-black text-[#0277BD] text-xs">{s.name}</p>
+                       </div>
+                     ))
+                   ) : (
+                     <p className="text-gray-400 font-bold text-sm text-center py-4 italic">Nenhum aniversário este mês</p>
+                   )}
+                </div>
+             </div>
+          </div>
         </div>
 
-        {/* Small Widgets */}
+        {/* Sidebar Widgets */}
         <div className="space-y-8">
-          <div className="bg-[#4FC3F7] rounded-[40px] border-4 border-[#0288D1] p-8 shadow-2xl flex flex-col gap-4">
-            <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-inner text-5xl">🦁</div>
+          <div className="bg-[#4FC3F7] rounded-[40px] border-4 border-[#0288D1] p-8 shadow-2xl flex flex-col gap-4 group hover:-rotate-1 transition-transform">
+            <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-inner text-5xl group-hover:scale-110 transition-transform">🦁</div>
             <div>
               <h3 className="text-3xl font-black text-white leading-tight">Turma Leãozinho</h3>
-              <p className="text-white/80 font-bold mb-4">Veja as fotos do lanche de hoje!</p>
-              <button className="bg-white text-[#0288D1] px-6 py-2 rounded-2xl font-black text-sm border-b-4 border-gray-200">VER ÁLBUM</button>
+              <p className="text-white/80 font-bold mb-4 italic">Veja as fotos do lanche de hoje!</p>
+              <button className="bg-white text-[#0288D1] px-6 py-3 rounded-2xl font-black text-sm border-b-4 border-gray-200 w-full hover:scale-105 active:scale-95 transition-all">VER ÁLBUM DO DIA</button>
             </div>
           </div>
 
           <div className="bg-[#FFF176] rounded-[40px] border-4 border-[#FBC02D] p-8 shadow-2xl">
              <div className="flex items-center gap-4 mb-6">
                 <span className="text-4xl">🍎</span>
-                <h3 className="text-2xl font-black text-[#5D4037]">Professores</h3>
+                <h3 className="text-2xl font-black text-[#5D4037]">Educadores</h3>
              </div>
              <div className="space-y-4">
-                {['Profª. Márcia', 'Prof. Ricardo'].map((t, i) => (
-                  <div key={i} className="flex items-center gap-4 bg-white/50 p-3 rounded-2xl border-b-4 border-[#FBC02D]">
-                    <div className="w-10 h-10 bg-white rounded-full border-2 border-[#FBC02D]" />
-                    <p className="font-black text-[#8D6E63] text-sm">{t}</p>
+                {['Profª. Márcia', 'Prof. Ricardo', 'Profª. Ana Clara'].map((t, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-white/50 p-3 rounded-2xl border-b-4 border-[#FBC02D] hover:bg-white transition-colors cursor-pointer">
+                    <div className="w-10 h-10 bg-white rounded-full border-2 border-[#FBC02D] overflow-hidden flex items-center justify-center text-lg">👩‍🏫</div>
+                    <div>
+                      <p className="font-black text-[#8D6E63] text-sm leading-none">{t}</p>
+                      <p className="text-[10px] text-[#A1887F] font-bold mt-1 uppercase">Presente</p>
+                    </div>
                   </div>
                 ))}
+             </div>
+          </div>
+
+          <div className="bg-[#78909C] rounded-[40px] border-4 border-[#455A64] p-8 shadow-2xl text-white">
+             <h3 className="text-xl font-black mb-4 flex items-center gap-2"><span>🛡️</span> Segurança</h3>
+             <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold bg-black/10 p-3 rounded-xl">
+                   <span>Backup Diário</span>
+                   <span className="text-[#81C784]">CONCLUÍDO</span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-bold bg-black/10 p-3 rounded-xl">
+                   <span>Câmeras Online</span>
+                   <span className="text-[#81C784]">ATIVO</span>
+                </div>
              </div>
           </div>
         </div>
@@ -379,7 +460,7 @@ function Dashboard({ students, announcements }: { students: Student[], announcem
   );
 }
 
-function StudentsView({ students, setStudents, schoolInfo }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any }) {
+function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any, searchQuery: string }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -401,7 +482,9 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
     medication: false, medicationDetails: '', 
     allergies: false, allergiesDetails: '', 
     surgery: false, surgeryDetails: '', 
-    neurodivergent: false, neurodivergentReport: false 
+    neurodivergent: false, neurodivergentReport: false,
+    gender: 'M' as 'M' | 'F',
+    photoUrl: ''
   };
   const [newStudent, setNewStudent] = useState(defaultStudentState);
 
@@ -422,7 +505,9 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
       surgery: newStudent.surgery,
       surgery_details: newStudent.surgeryDetails,
       neurodivergent: newStudent.neurodivergent,
-      neurodivergent_report: newStudent.neurodivergentReport
+      neurodivergent_report: newStudent.neurodivergentReport,
+      gender: newStudent.gender,
+      photo_url: newStudent.photoUrl
     };
     
     if (editingId) {
@@ -459,6 +544,8 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
       surgeryDetails: student.surgeryDetails || '',
       neurodivergent: student.neurodivergent || false,
       neurodivergentReport: student.neurodivergentReport || false,
+      gender: student.gender || 'M',
+      photoUrl: student.photo_url || student.photoUrl || ''
     });
     setEditingId(student.id);
     setIsRegistering(true);
@@ -678,6 +765,37 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Gênero</label>
+                      <div className="flex gap-2">
+                        <button 
+                          type="button"
+                          onClick={() => setNewStudent({...newStudent, gender: 'M'})}
+                          className={`flex-1 py-3 rounded-2xl font-black border-4 transition-all ${newStudent.gender === 'M' ? 'bg-[#E1F5FE] border-[#4FC3F7] text-[#0288D1]' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                        >
+                          👦 MENINO
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setNewStudent({...newStudent, gender: 'F'})}
+                          className={`flex-1 py-3 rounded-2xl font-black border-4 transition-all ${newStudent.gender === 'F' ? 'bg-[#FCE4EC] border-[#F06292] text-[#C2185B]' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                        >
+                          👧 MENINA
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Link da Foto (Opcional)</label>
+                      <input 
+                        value={newStudent.photoUrl}
+                        onChange={e => setNewStudent({...newStudent, photoUrl: e.target.value})}
+                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+
                   {/* Saúde e Cuidados */}
                   <div className="pt-4 pb-2 border-t-4 border-dashed border-[#E1F5FE]">
                     <h4 className="text-lg font-black text-[#01579B]">Ficha Médica 🩺</h4>
@@ -748,7 +866,12 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
       </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-        {students.map(s => (
+        {students
+          .filter(s => 
+            s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            (s.turma && s.turma.toLowerCase().includes(searchQuery.toLowerCase()))
+          )
+          .map(s => (
           <div key={s.id} className="relative group">
             <div className="absolute inset-0 translate-x-4 translate-y-4 rounded-[56px] -z-10 group-hover:translate-x-6 group-hover:translate-y-6 transition-all duration-300 bg-[#E1F5FE]" />
             <div className="bg-white p-8 rounded-[56px] border-4 border-[#4FC3F7] shadow-xl relative overflow-hidden flex flex-col items-center text-center">
@@ -766,9 +889,13 @@ function StudentsView({ students, setStudents, schoolInfo }: { students: Student
                    <Trash2 className="w-5 h-5" />
                  </button>
                </div>
-               <div className="w-28 h-28 bg-[#F5FBFF] rounded-[40px] border-4 border-[#E1F5FE] overflow-hidden mb-6 shadow-inner relative group-hover:rotate-6 transition-transform flex items-center justify-center text-5xl">
-                  {s.photoUrl ? <img src={s.photoUrl} alt="" className="rounded-full w-full h-full object-cover" /> : '👦'}
-               </div>
+                <div className={`w-28 h-28 bg-[#F5FBFF] rounded-[40px] border-4 border-[#E1F5FE] overflow-hidden mb-6 shadow-inner relative group-hover:rotate-6 transition-transform flex items-center justify-center text-5xl ${s.gender === 'F' ? 'bg-[#FFF5F8]' : ''}`}>
+                   {(s.photoUrl || (s as any).photo_url) ? (
+                     <img src={s.photoUrl || (s as any).photo_url} alt="" className="w-full h-full object-cover" />
+                   ) : (
+                     s.gender === 'F' ? '👧' : '👦'
+                   )}
+                </div>
                <h3 className="text-2xl font-black text-[#5D4037] mb-1">{s.name}</h3>
                <span className="bg-[#4FC3F7] px-4 py-1 rounded-full text-white font-black text-xs border-2 border-[#0288D1] mb-6 uppercase tracking-tighter">
                   {s.grade} • {s.turma}
@@ -1636,13 +1763,35 @@ function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }:
 
 function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void }) {
   const [formData, setFormData] = useState(info);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    setFormData(info);
+  }, [info]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('school_info').upsert({ id: info.id || 1, ...formData });
-    if (!error) {
-      setInfo(formData);
-      alert('Configurações salvas no Supabase! 🛡️');
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('school_info').upsert({ 
+        id: info.id || 1, 
+        ...formData,
+        updated_at: new Date().toISOString()
+      });
+      
+      if (!error) {
+        setInfo(formData);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      } else {
+        console.error('Error saving settings:', error);
+        alert('Erro ao salvar: ' + error.message);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1774,9 +1923,41 @@ function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void 
             />
           </div>
 
-          <button type="submit" className="w-full py-5 bg-[#81C784] text-white rounded-[32px] font-black border-b-8 border-[#388E3C] shadow-lg hover:scale-[1.02] transition-all mt-4">
-            SALVAR TUDO ✅
+          <button 
+            type="submit" 
+            disabled={isSaving}
+            className={`w-full py-5 text-white rounded-[32px] font-black border-b-8 shadow-lg transition-all mt-4 flex items-center justify-center gap-3 ${
+              isSaving 
+              ? 'bg-gray-400 border-gray-500 cursor-wait' 
+              : showSuccess 
+                ? 'bg-[#4FC3F7] border-[#0288D1]' 
+                : 'bg-[#81C784] border-[#388E3C] hover:scale-[1.02] active:translate-y-1'
+            }`}
+          >
+            {isSaving ? (
+              <>
+                <div className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                SALVANDO...
+              </>
+            ) : showSuccess ? (
+              <>✅ SALVO COM SUCESSO!</>
+            ) : (
+              <>SALVAR TUDO ✅</>
+            )}
           </button>
+          
+          <AnimatePresence>
+            {showSuccess && (
+              <motion.p 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-center text-[#388E3C] font-bold text-xs mt-3"
+              >
+                As alterações foram sincronizadas com a nuvem! ☁️
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
       </form>
     </div>
