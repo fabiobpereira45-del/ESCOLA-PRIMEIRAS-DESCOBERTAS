@@ -2418,7 +2418,7 @@ function DirectiveView({ members, setMembers }: { members: DirectiveMember[], se
   );
 }
 
-function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }: any) {
+function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose, customContent }: any) {
   const [formData, setFormData] = useState<any>(initialData || {});
 
   useEffect(() => {
@@ -2516,6 +2516,8 @@ function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }:
               )}
             </div>
           ))}
+          
+           {customContent}
           
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-[24px] font-black border-b-6 border-gray-300 active:translate-y-1 transition-all">CANCELAR</button>
