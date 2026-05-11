@@ -27,6 +27,7 @@ export interface Teacher {
   subject: string;
   classes: string[];
   photoUrl?: string;
+  bio?: string;
 }
 
 export interface Grade {

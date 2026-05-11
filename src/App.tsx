@@ -1829,6 +1829,7 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
     const teacherData = { 
       name: data.name,
       subject: data.subject,
+      bio: data.bio || '',
       classes: data.classes.split(',').map((c: string) => c.trim()),
       photo_url: photoUrl || data.photoUrl || ''
     };
@@ -1869,7 +1870,8 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
           fields={[
             { key: 'name', label: 'Nome do Mestre', placeholder: 'Ex: Prof. João' },
             { key: 'subject', label: 'Matéria', type: 'select', options: subjects.map(s => ({ value: s.name, label: s.name })) },
-            { key: 'classes', label: 'Turmas (separadas por vírgula)', placeholder: 'Ex: 1º Ano A, 2º Ano B' }
+            { key: 'classes', label: 'Turmas (separadas por vírgula)', placeholder: 'Ex: 1º Ano A, 2º Ano B' },
+            { key: 'bio', label: 'Biografia / Mini Currículo', placeholder: 'Conte um pouco sobre sua trajetória...' }
           ]}
           initialData={editingTeacher ? { ...editingTeacher, classes: editingTeacher.classes.join(', ') } : {}}
           onSubmit={handleSave}
@@ -1936,7 +1938,13 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
                 {t.photoUrl ? <img src={t.photoUrl} alt="" className="w-full h-full object-cover" /> : '👨‍🏫'}
               </div>
               <h4 className="text-2xl font-black text-[#5D4037] mb-1">{t.name}</h4>
-              <p className="text-[#0288D1] font-black text-sm mb-6 uppercase tracking-widest">{t.subject}</p>
+               <p className="text-[#0288D1] font-black text-sm mb-4 uppercase tracking-widest">{t.subject}</p>
+              
+               {t.bio && (
+                 <p className="text-[#546E7A] text-xs font-bold text-center mb-6 px-4 italic line-clamp-3">
+                   "{t.bio}"
+                 </p>
+               )}
               
               <div className="flex flex-wrap justify-center gap-3">
                 {t.classes.map((c: string, i: number) => (
