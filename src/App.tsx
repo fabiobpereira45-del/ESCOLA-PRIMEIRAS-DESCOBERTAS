@@ -295,6 +295,7 @@ export default function App() {
               {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} subjects={subjects} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView />}
+
               {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} occurrences={occurrences} setOccurrences={setOccurrences} />}
               {currentView === 'classes' && <ClassesView classes={classes} setClasses={setClasses} students={students} />}
               {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
@@ -1952,7 +1953,7 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
                )}
               
               <div className="flex flex-wrap justify-center gap-3">
-                {t.classes.map((c: string, i: number) => (
+                {(t.classes || []).map((c: string, i: number) => (
                   <span key={i} className="px-4 py-2 bg-[#E1F5FE] rounded-2xl text-[10px] font-black text-[#0277BD] border-2 border-[#4FC3F7] shadow-sm">
                     {c}
                   </span>
