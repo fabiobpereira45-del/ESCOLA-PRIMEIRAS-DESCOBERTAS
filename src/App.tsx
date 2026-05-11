@@ -1805,8 +1805,6 @@ function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void 
         name: formData.name,
         address: formData.address,
         cnpj: formData.cnpj,
-        phone: formData.phone,
-        email: formData.email,
         director: formData.director,
         logo_url: formData.logoUrl,
         primary_color: formData.primaryColor,
