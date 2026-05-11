@@ -67,6 +67,7 @@ export interface LibraryBook {
   available: boolean;
   loanedTo?: string;
   dueDate?: string;
+  pdfUrl?: string;
 }
 
 export interface InventoryItem {

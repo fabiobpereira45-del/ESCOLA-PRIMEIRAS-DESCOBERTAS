@@ -110,7 +110,8 @@ CREATE TABLE IF NOT EXISTS public.books (
     category TEXT,
     available BOOLEAN DEFAULT true,
     loaned_to TEXT,
-    due_date DATE
+    due_date DATE,
+    pdf_url TEXT
 );
 
 -- 10. Tabela de Diretoria (directive)
