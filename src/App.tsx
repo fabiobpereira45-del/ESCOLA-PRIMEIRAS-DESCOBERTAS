@@ -62,6 +62,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [occurrences, setOccurrences] = useState<any[]>([]);
   const [schoolInfo, setSchoolInfo] = useState({
     name: 'Escola Primeiras Descobertas (EPD)',
     address: 'Rua das Descobertas, 123',
@@ -141,6 +142,9 @@ export default function App() {
 
       const { data: dirData } = await supabase.from('directive').select('*');
       if (dirData) setDirectiveMembers(dirData as any);
+
+      const { data: occData } = await supabase.from('student_occurrences').select('*').order('date', { ascending: false });
+      if (occData) setOccurrences(occData as any);
 
       const { data: schoolData } = await supabase.from('school_info').select('*').single();
       if (schoolData) {
@@ -279,7 +283,7 @@ export default function App() {
               {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView />}
-              {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} />}
+              {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} occurrences={occurrences} setOccurrences={setOccurrences} />}
               {currentView === 'classes' && <ClassesView classes={classes} setClasses={setClasses} students={students} />}
               {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
               {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} />}
@@ -472,11 +476,28 @@ function Dashboard({ students, announcements, financialRecords }: { students: St
   );
 }
 
-function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any, searchQuery: string, classes: any[] }) {
+function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes, occurrences, setOccurrences }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any, searchQuery: string, classes: any[], occurrences: any[], setOccurrences: (o: any[]) => void }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingStudent, setViewingStudent] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  
+  // States for new occurrence
+  const [isAddingOccurrence, setIsAddingOccurrence] = useState(false);
+  const [newOcc, setNewOcc] = useState({ type: 'Anotação', description: '', date: new Date().toISOString().split('T')[0] });
+
+  const handleSaveOccurrence = async () => {
+    if (!newOcc.description) return;
+    const data = { ...newOcc, student_id: viewingStudent.id };
+    const { data: saved, error } = await supabase.from('student_occurrences').insert(data).select();
+    if (!error && saved) {
+      setOccurrences([saved[0], ...occurrences]);
+      setNewOcc({ type: 'Anotação', description: '', date: new Date().toISOString().split('T')[0] });
+      setIsAddingOccurrence(false);
+    } else {
+      alert('Erro ao salvar ocorrência: ' + error?.message);
+    }
+  };
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -1201,6 +1222,84 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
                         </p>
                       </div>
                     </div>
+                 </div>
+               </div>
+
+               <div className="mt-10 pt-10 border-t-8 border-[#FF8A65]/10 space-y-8">
+                 <div className="flex items-center justify-between">
+                    <h4 className="text-xl font-black text-[#5D4037] flex items-center gap-3">
+                      <span className="text-3xl">📝</span> Diário de Bordo
+                    </h4>
+                    <button 
+                      onClick={() => setIsAddingOccurrence(!isAddingOccurrence)}
+                      className="px-6 py-2 bg-[#81C784] text-white rounded-2xl font-black text-xs border-b-4 border-[#388E3C] hover:scale-105 transition-all"
+                    >
+                      {isAddingOccurrence ? 'CANCELAR' : '+ NOVA OCORRÊNCIA'}
+                    </button>
+                 </div>
+
+                 {isAddingOccurrence && (
+                   <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-orange-50 p-6 rounded-[32px] border-4 border-dashed border-[#FF8A65]/30 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <select 
+                          value={newOcc.type} 
+                          onChange={e => setNewOcc({...newOcc, type: e.target.value})}
+                          className="px-4 py-3 bg-white rounded-xl font-bold text-sm outline-none border-2 border-orange-100 focus:border-[#FF8A65]"
+                        >
+                          <option value="Elogio">🌟 Elogio</option>
+                          <option value="Comportamento">⚠️ Comportamento</option>
+                          <option value="Incidente">🚑 Incidente / Acidente</option>
+                          <option value="Relatório">📄 Relatório Pedagógico</option>
+                          <option value="Solicitação">📬 Solicitação</option>
+                          <option value="Anotação">📝 Anotação Geral</option>
+                        </select>
+                        <input 
+                          type="date" 
+                          value={newOcc.date} 
+                          onChange={e => setNewOcc({...newOcc, date: e.target.value})}
+                          className="px-4 py-3 bg-white rounded-xl font-bold text-sm outline-none border-2 border-orange-100 focus:border-[#FF8A65]" 
+                        />
+                      </div>
+                      <textarea 
+                        value={newOcc.description}
+                        onChange={e => setNewOcc({...newOcc, description: e.target.value})}
+                        placeholder="Descreva o ocorrido com detalhes..."
+                        className="w-full h-32 px-4 py-4 bg-white rounded-2xl font-bold text-sm outline-none border-2 border-orange-100 focus:border-[#FF8A65] resize-none"
+                      />
+                      <button 
+                        onClick={handleSaveOccurrence}
+                        className="w-full py-4 bg-[#FF8A65] text-white rounded-2xl font-black border-b-6 border-[#D84315] hover:brightness-105 transition-all"
+                      >
+                        SALVAR NO DIÁRIO
+                      </button>
+                   </motion.div>
+                 )}
+
+                 <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                    {occurrences.filter(o => o.student_id === viewingStudent.id).length === 0 ? (
+                      <p className="text-gray-400 font-bold text-center py-10 italic">Nenhum registro no diário ainda.</p>
+                    ) : (
+                      occurrences.filter(o => o.student_id === viewingStudent.id).map(o => (
+                        <div key={o.id} className="bg-white p-6 rounded-[32px] border-4 border-gray-100 shadow-sm space-y-2 relative overflow-hidden group">
+                           <div className={`absolute top-0 left-0 w-2 h-full ${
+                             o.type === 'Elogio' ? 'bg-[#FFD54F]' : 
+                             o.type === 'Comportamento' ? 'bg-[#FF8A65]' : 
+                             o.type === 'Incidente' ? 'bg-[#FF5252]' : 'bg-[#4FC3F7]'
+                           }`} />
+                           <div className="flex items-center justify-between">
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                                o.type === 'Elogio' ? 'bg-[#FFF9C4] text-[#F57F17]' : 
+                                o.type === 'Comportamento' ? 'bg-orange-100 text-orange-700' : 
+                                o.type === 'Incidente' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {o.type}
+                              </span>
+                              <span className="text-[10px] font-black text-gray-400">{new Date(o.date).toLocaleDateString('pt-BR')}</span>
+                           </div>
+                           <p className="text-gray-600 font-bold leading-relaxed">{o.description}</p>
+                        </div>
+                      ))
+                    )}
                  </div>
                </div>
 
