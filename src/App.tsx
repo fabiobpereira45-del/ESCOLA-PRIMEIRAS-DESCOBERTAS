@@ -1028,6 +1028,7 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
             (s.turma && s.turma.toLowerCase().includes(searchQuery.toLowerCase()))
           )
+          .sort((a, b) => a.name.localeCompare(b.name))
           .map(s => (
           <div key={s.id} className="relative group">
             <div className="absolute inset-0 translate-x-4 translate-y-4 rounded-[56px] -z-10 group-hover:translate-x-6 group-hover:translate-y-6 transition-all duration-300 bg-[#E1F5FE]" />
