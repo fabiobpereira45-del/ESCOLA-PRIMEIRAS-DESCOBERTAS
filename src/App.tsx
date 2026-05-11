@@ -140,7 +140,15 @@ export default function App() {
       if (dirData) setDirectiveMembers(dirData as any);
 
       const { data: schoolData } = await supabase.from('school_info').select('*').single();
-      if (schoolData) setSchoolInfo(schoolData as any);
+      if (schoolData) {
+        setSchoolInfo({
+          ...schoolData,
+          logoUrl: schoolData.logo_url || schoolData.logoUrl || '/logo.png',
+          primaryColor: schoolData.primary_color || schoolData.primaryColor || '#4FC3F7',
+          passingGrade: schoolData.passing_grade || schoolData.passingGrade || 7.0,
+          contractTemplate: schoolData.contract_template || schoolData.contractTemplate || ''
+        } as any);
+      }
     }
     loadData();
   }, []);
@@ -559,13 +567,31 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
     setDeletingId(null);
   };
 
-  const generatePDF = (student: Student) => {
+  const generatePDF = async (student: Student) => {
     const doc = new jsPDF();
     const today = new Date().toLocaleDateString('pt-BR');
     
-    // Header
+    // Header background
     doc.setFillColor(schoolInfo.primaryColor);
     doc.rect(0, 0, 210, 40, 'F');
+    
+    // Logo
+    if (schoolInfo.logoUrl) {
+      try {
+        const logoImg = new Image();
+        logoImg.crossOrigin = "anonymous";
+        logoImg.src = schoolInfo.logoUrl;
+        await new Promise((resolve) => {
+          logoImg.onload = resolve;
+          logoImg.onerror = resolve; // Continue even if logo fails
+        });
+        if (logoImg.complete && logoImg.naturalWidth !== 0) {
+          doc.addImage(logoImg, 'PNG', 15, 5, 30, 30);
+        }
+      } catch (e) {
+        console.warn("Could not load logo for PDF", e);
+      }
+    }
     
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -630,7 +656,7 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('Documento gerado eletronicamente pelo Sistema Escola Mágica.', 105, 285, { align: 'center' });
+    doc.text('Documento gerado eletronicamente pelo Sistema EPD.', 105, 285, { align: 'center' });
 
     doc.save(`Comprovante_${student.name.replace(/\s+/g, '_')}.pdf`);
   };
@@ -1774,10 +1800,24 @@ function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void 
     e.preventDefault();
     setIsSaving(true);
     try {
+      // Map camelCase to snake_case for database
+      const dbData = {
+        name: formData.name,
+        address: formData.address,
+        cnpj: formData.cnpj,
+        phone: formData.phone,
+        email: formData.email,
+        director: formData.director,
+        logo_url: formData.logoUrl,
+        primary_color: formData.primaryColor,
+        passing_grade: formData.passingGrade,
+        contract_template: formData.contractTemplate,
+        updated_at: new Date().toISOString()
+      };
+
       const { error } = await supabase.from('school_info').upsert({ 
         id: info.id || 1, 
-        ...formData,
-        updated_at: new Date().toISOString()
+        ...dbData
       });
       
       if (!error) {
