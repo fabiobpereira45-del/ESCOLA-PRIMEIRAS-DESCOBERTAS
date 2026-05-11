@@ -1813,11 +1813,15 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data } = supabase.storage
         .from('students')
         .getPublicUrl(filePath);
 
-      setPhotoUrl(publicUrl);
+      if (data?.publicUrl) {
+        setPhotoUrl(data.publicUrl);
+      } else {
+        throw new Error('Não foi possível obter a URL da foto.');
+      }
     } catch (error: any) {
       alert('Erro no upload: ' + error.message);
     } finally {
@@ -1830,7 +1834,7 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
       name: data.name,
       subject: data.subject,
       bio: data.bio || '',
-      classes: data.classes.split(',').map((c: string) => c.trim()),
+      classes: (data.classes || '').split(',').map((c: string) => c.trim()).filter(Boolean),
       photo_url: photoUrl || data.photoUrl || ''
     };
     
@@ -1869,7 +1873,7 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
           icon="🍎"
           fields={[
             { key: 'name', label: 'Nome do Mestre', placeholder: 'Ex: Prof. João' },
-            { key: 'subject', label: 'Matéria', type: 'select', options: subjects.map(s => ({ value: s.name, label: s.name })) },
+            { key: 'subject', label: 'Matéria', type: 'select', options: (subjects || []).map(s => ({ value: s.name, label: s.name })) },
             { key: 'classes', label: 'Turmas (separadas por vírgula)', placeholder: 'Ex: 1º Ano A, 2º Ano B' },
             { key: 'bio', label: 'Biografia / Mini Currículo', placeholder: 'Conte um pouco sobre sua trajetória...' }
           ]}
