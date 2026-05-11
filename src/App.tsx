@@ -1996,7 +1996,9 @@ function CommunicationView({ announcements, setAnnouncements }: { announcements:
       } else {
         const annData = { 
           ...data, 
-          date: new Date().toLocaleDateString('pt-BR') 
+          date: data.date 
+            ? new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR')
+            : new Date().toLocaleDateString('pt-BR') 
         };
         const { data: newData, error } = await supabase.from('announcements').insert(annData).select();
         if (!error && newData) {
@@ -2029,6 +2031,7 @@ function CommunicationView({ announcements, setAnnouncements }: { announcements:
           icon="📢"
           fields={[
             { key: 'title', label: 'Título do Recado', placeholder: 'Ex: Reunião de Pais' },
+            { key: 'date', label: 'Data do Evento', type: 'date' },
             { key: 'content', label: 'Mensagem', placeholder: 'Ex: Lembramos que amanhã...' },
             { 
               key: 'target', 
