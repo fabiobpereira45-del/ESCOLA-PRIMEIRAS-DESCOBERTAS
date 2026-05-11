@@ -475,6 +475,7 @@ function Dashboard({ students, announcements, financialRecords }: { students: St
 function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any, searchQuery: string, classes: any[] }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingStudent, setViewingStudent] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -499,7 +500,8 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
     surgery: false, surgeryDetails: '',
     gender: 'M' as 'M' | 'F',
     photoUrl: '',
-    registrationNumber: ''
+    registrationNumber: '',
+    shift: ''
   };
   const [newStudent, setNewStudent] = useState(defaultStudentState);
 
@@ -517,6 +519,7 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
       additional_phone: newStudent.additionalPhone,
       photo_url: newStudent.photoUrl,
       registration_number: regNumber,
+      shift: newStudent.shift,
       // Saúde
       medication: newStudent.medication,
       medication_details: newStudent.medicationDetails,
@@ -583,7 +586,8 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
       surgeryDetails: student.surgery_details || '',
       gender: (student.gender as 'M' | 'F') || 'M',
       photoUrl: student.photo_url || student.photoUrl || '',
-      registrationNumber: student.registration_number || student.registrationNumber || ''
+      registrationNumber: student.registration_number || student.registrationNumber || '',
+      shift: student.shift || ''
     });
     setEditingId(student.id);
     setIsRegistering(true);
@@ -820,8 +824,22 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
                         onChange={e => setNewStudent({...newStudent, class: e.target.value})}
                         className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all appearance-none"
                       >
-                        <option value="">Selecione uma turma...</option>
+                        <option value="">Turma...</option>
                         {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Turno</label>
+                      <select 
+                        required
+                        value={newStudent.shift}
+                        onChange={e => setNewStudent({...newStudent, shift: e.target.value})}
+                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all appearance-none"
+                      >
+                        <option value="">Turno...</option>
+                        <option value="Matutino">☀️ Matutino</option>
+                        <option value="Vespertino">🌤️ Vespertino</option>
+                        <option value="Integral">🕒 Integral</option>
                       </select>
                     </div>
                   </div>
@@ -1071,17 +1089,133 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
                </div>
 
                <div className="w-full space-y-3">
-                 <button 
-                   onClick={() => generatePDF(s)}
-                   className="w-full py-4 bg-[#E1F5FE] text-[#0288D1] rounded-[24px] font-black text-sm border-b-6 border-[#4FC3F7] flex items-center justify-center gap-2 hover:brightness-95 active:translate-y-1 transition-all"
-                 >
-                   <Printer className="w-4 h-4" /> COMPROVANTE
-                 </button>
+                 <div className="flex gap-2">
+                   <button 
+                    onClick={() => setViewingStudent(s)}
+                    className="flex-1 py-3 bg-[#FFF176] text-[#D84315] rounded-[20px] font-black text-[10px] border-b-4 border-[#FBC02D] flex items-center justify-center gap-2 hover:brightness-95 active:translate-y-1 transition-all"
+                   >
+                     VER FICHA 👁️
+                   </button>
+                   <button 
+                    onClick={() => generatePDF(s)}
+                    className="flex-1 py-3 bg-[#E1F5FE] text-[#0288D1] rounded-[20px] font-black text-[10px] border-b-4 border-[#4FC3F7] flex items-center justify-center gap-2 hover:brightness-95 active:translate-y-1 transition-all"
+                   >
+                    <Printer className="w-3 h-3" /> COMPROVANTE
+                   </button>
+                 </div>
                </div>
             </div>
           </div>
         ))}
       </div>
+
+      <AnimatePresence>
+        {viewingStudent && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-[56px] border-8 border-[#FF8A65] p-10 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
+            >
+               <button onClick={() => setViewingStudent(null)} className="absolute top-6 right-6 p-2 bg-gray-100 text-gray-400 rounded-full hover:rotate-90 transition-transform">
+                 <X className="w-6 h-6" />
+               </button>
+
+               <div className="flex flex-col md:flex-row gap-8 items-start mb-10">
+                 <div className={`w-32 h-32 rounded-[40px] border-4 border-[#FF8A65] overflow-hidden flex items-center justify-center text-5xl shadow-xl ${viewingStudent.gender === 'F' ? 'bg-[#FFF5F8]' : 'bg-[#F0F7FF]'}`}>
+                    {viewingStudent.photo_url || viewingStudent.photoUrl ? <img src={viewingStudent.photo_url || viewingStudent.photoUrl} className="w-full h-full object-cover" /> : (viewingStudent.gender === 'F' ? '👧' : '👦')}
+                 </div>
+                 <div className="flex-1">
+                   <div className="flex items-center gap-3 mb-1">
+                     <h3 className="text-4xl font-black text-[#5D4037]">{viewingStudent.name}</h3>
+                     <span className={`px-3 py-1 rounded-full text-white text-[10px] font-black uppercase ${viewingStudent.gender === 'F' ? 'bg-[#F06292]' : 'bg-[#4FC3F7]'}`}>
+                        {viewingStudent.gender === 'F' ? 'Menina' : 'Menino'}
+                     </span>
+                   </div>
+                   <p className="text-[#FF8A65] font-black text-lg uppercase tracking-widest italic mb-4">RA: {viewingStudent.registration_number || viewingStudent.registrationNumber || '---'}</p>
+                   
+                   <div className="flex flex-wrap gap-2">
+                     <span className="px-4 py-2 bg-[#E1F5FE] text-[#0288D1] rounded-2xl font-black text-xs border-2 border-[#B3E5FC]">📚 {viewingStudent.turma || '---'}</span>
+                     <span className="px-4 py-2 bg-[#FFF9C4] text-[#F57F17] rounded-2xl font-black text-xs border-2 border-[#FFF176]">🕒 {viewingStudent.shift || 'Não definido'}</span>
+                     <span className="px-4 py-2 bg-[#F3E5F5] text-[#7B1FA2] rounded-2xl font-black text-xs border-2 border-[#E1BEE7]">🎂 {viewingStudent.age || '---'} Anos</span>
+                   </div>
+                 </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="space-y-6">
+                    <h4 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-6 h-1 bg-[#FF8A65] rounded-full" /> Contatos e Endereço
+                    </h4>
+                    <div className="bg-gray-50 p-6 rounded-[32px] space-y-4">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase">Responsável</p>
+                        <p className="font-bold text-[#5D4037]">{viewingStudent.parent_name || viewingStudent.parentName || '---'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase">Telefone Principal</p>
+                        <p className="font-bold text-[#5D4037]">{viewingStudent.parent_contact || viewingStudent.parentContact || '---'}</p>
+                      </div>
+                      {viewingStudent.additional_phone && (
+                        <div>
+                          <p className="text-[10px] font-black text-gray-400 uppercase">Telefone Adicional</p>
+                          <p className="font-bold text-[#5D4037]">{viewingStudent.additional_phone}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase">Endereço</p>
+                        <p className="font-bold text-[#5D4037] text-sm">{viewingStudent.address || '---'}</p>
+                      </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-6">
+                    <h4 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-6 h-1 bg-[#81C784] rounded-full" /> Ficha de Saúde
+                    </h4>
+                    <div className="bg-gray-50 p-6 rounded-[32px] space-y-4">
+                      <div className={`p-3 rounded-2xl border-2 ${viewingStudent.medication ? 'bg-orange-50 border-orange-100 text-orange-700' : 'bg-gray-100 border-transparent text-gray-400'}`}>
+                        <p className="text-[10px] font-black uppercase">Medicamento Contínuo</p>
+                        <p className="font-bold text-sm">{viewingStudent.medication ? `Sim: ${viewingStudent.medication_details || ''}` : 'Não'}</p>
+                      </div>
+                      <div className={`p-3 rounded-2xl border-2 ${viewingStudent.neurodivergent ? 'bg-purple-50 border-purple-100 text-purple-700' : 'bg-gray-100 border-transparent text-gray-400'}`}>
+                        <p className="text-[10px] font-black uppercase">Neurodivergente</p>
+                        <p className="font-bold text-sm">{viewingStudent.neurodivergent ? `Sim: ${viewingStudent.atipicidade || ''} ${viewingStudent.has_report ? '(Com Laudo)' : ''}` : 'Não'}</p>
+                      </div>
+                      <div className={`p-3 rounded-2xl border-2 ${viewingStudent.allergy_med || viewingStudent.allergy_food ? 'bg-red-50 border-red-100 text-red-700' : 'bg-gray-100 border-transparent text-gray-400'}`}>
+                        <p className="text-[10px] font-black uppercase">Alergias</p>
+                        <p className="font-bold text-sm">
+                          {viewingStudent.allergy_med ? `Remédio: ${viewingStudent.allergy_med_details || ''}` : ''}
+                          {viewingStudent.allergy_med && viewingStudent.allergy_food ? ' | ' : ''}
+                          {viewingStudent.allergy_food ? `Alimento: ${viewingStudent.allergy_food_details || ''}` : (!viewingStudent.allergy_med ? 'Nenhuma' : '')}
+                        </p>
+                      </div>
+                      <div className={`p-3 rounded-2xl border-2 ${viewingStudent.surgery ? 'bg-pink-50 border-pink-100 text-pink-700' : 'bg-gray-100 border-transparent text-gray-400'}`}>
+                        <p className="text-[10px] font-black uppercase">Cirurgias / Deficiências</p>
+                        <p className="font-bold text-sm">
+                          {viewingStudent.surgery ? `Cirurgia: ${viewingStudent.surgery_details || ''}` : ''}
+                          {viewingStudent.surgery && viewingStudent.disability ? ' | ' : ''}
+                          {viewingStudent.disability ? `Deficiência: ${viewingStudent.disability_details || ''}` : (!viewingStudent.surgery ? 'Nenhuma' : '')}
+                        </p>
+                      </div>
+                    </div>
+                 </div>
+               </div>
+
+               <div className="mt-10 flex gap-4">
+                  <button onClick={() => { setViewingStudent(null); handleEdit(viewingStudent); }} className="flex-1 py-4 bg-[#FFF176] text-[#D84315] rounded-[24px] font-black border-b-6 border-[#FBC02D] active:translate-y-1 transition-all flex items-center justify-center gap-2">
+                    ✏️ EDITAR CADASTRO
+                  </button>
+                  <button onClick={() => setViewingStudent(null)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-[24px] font-black border-b-6 border-gray-300 active:translate-y-1 transition-all">
+                    FECHAR
+                  </button>
+               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
