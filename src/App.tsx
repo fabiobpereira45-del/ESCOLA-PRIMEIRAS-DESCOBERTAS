@@ -149,7 +149,7 @@ export default function App() {
           logoUrl: schoolData.logo_url || schoolData.logoUrl || '/logo.png',
           primaryColor: schoolData.primary_color || schoolData.primaryColor || '#4FC3F7',
           passingGrade: schoolData.passing_grade || schoolData.passingGrade || 7.0,
-          contractTemplate: schoolData.contract_template || schoolData.contractTemplate || ''
+          contractTemplate: schoolData.contract_template || schoolData.contractTemplate || 'Declaro que o aluno acima está devidamente matriculado nesta instituição de ensino no período letivo atual.'
         } as any);
       }
     }
@@ -713,9 +713,11 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
     doc.setFont('helvetica', 'normal'); doc.text(student.parent_contact || (student as any).parentContact || '---', 60, startY + spacing * 4);
 
     // Declaration
-    const text = schoolInfo.contractTemplate;
+    const text = schoolInfo.contractTemplate || 'Declaro para os devidos fins que o aluno acima identificado encontra-se regularmente matriculado nesta instituição de ensino no período letivo atual.';
     const splitText = doc.splitTextToSize(text, 170);
-    doc.text(splitText, 20, startY + spacing * 5);
+    doc.setFont('helvetica', 'italic');
+    doc.text(splitText, 20, startY + spacing * 6);
+    doc.setFont('helvetica', 'normal');
 
     // Date
     doc.text(`Emitido em: ${today}`, 20, 200);
