@@ -5,7 +5,6 @@ import {
   Edit3, Trash2, ChevronRight, ArrowLeft, FileText, Printer, Award, Download
 } from 'lucide-react';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
 interface StudentGrade {
   id?: string;
   student_id: string;
@@ -13,6 +12,8 @@ interface StudentGrade {
   period: string;
   value: number | null;
 }
+
+import { User } from '../types';
 
 interface Student {
   id: string;
@@ -580,7 +581,7 @@ function GradeEntry({ cls, idx, subject, students, allGrades, onSave, onDelete, 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 type Step = 'turma' | 'subject' | 'grades' | 'boletim';
 
-export default function GradesView() {
+export default function GradesView({ currentUser }: { currentUser: User }) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [grades, setGrades] = useState<StudentGrade[]>([]);
@@ -609,6 +610,17 @@ export default function GradesView() {
 
       const { data: sub } = await supabase.from('subjects').select('name');
       if (sub && sub.length > 0) setSubjects(sub.map((s: any) => s.name));
+
+      if (currentUser.role === 'student' && currentUser.studentId) {
+        const studentObj = stu?.find(s => s.id === currentUser.studentId);
+        const classObj = cls?.find(c => c.name === studentObj?.turma);
+        if (studentObj && classObj) {
+          setSelectedStudent(studentObj as any);
+          setSelectedClass(classObj as any);
+          setSelectedClassIdx(cls?.indexOf(classObj) ?? 0);
+          setStep('boletim');
+        }
+      }
 
       setLoading(false);
     }

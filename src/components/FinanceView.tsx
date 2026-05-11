@@ -8,20 +8,31 @@ import { FinancialRecord, Student, Teacher, Expense, Payroll, Class } from '../t
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
+import { User } from '../types';
+
 interface FinanceViewProps {
   records: FinancialRecord[];
   setRecords: (r: FinancialRecord[]) => void;
   students: Student[];
   teachers: Teacher[];
   classes: Class[];
+  currentUser: User;
 }
 
-export default function FinanceView({ records, setRecords, students, teachers, classes }: FinanceViewProps) {
+export default function FinanceView({ records, setRecords, students, teachers, classes, currentUser }: FinanceViewProps) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'incomes' | 'expenses' | 'payroll' | 'student_panel'>('dashboard');
   const [selectedDoc, setSelectedDoc] = useState<{ type: string; record: any } | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Initialize for student
+  useEffect(() => {
+    if (currentUser.role === 'student' && currentUser.studentId) {
+      setActiveTab('student_panel');
+      setSelectedStudentId(currentUser.studentId);
+    }
+  }, [currentUser]);
 
   // Filtros para Painel do Aluno
   const [selectedTurma, setSelectedTurma] = useState('');
@@ -120,39 +131,43 @@ export default function FinanceView({ records, setRecords, students, teachers, c
       <div className="flex flex-col md:flex-row items-end justify-between gap-6">
         <div>
           <h2 className="text-4xl font-black text-[#01579B]">Gestão Financeira 💰</h2>
-          <div className="flex flex-wrap gap-2 mt-4">
-            {(['dashboard', 'incomes', 'expenses', 'payroll', 'student_panel'] as const).map(tab => (
-              <button 
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest transition-all ${
-                  activeTab === tab 
-                    ? 'bg-[#4FC3F7] text-white shadow-lg scale-105' 
-                    : 'bg-white text-gray-400 hover:text-[#4FC3F7]'
-                }`}
-              >
-                {tab === 'dashboard' ? 'Visão Geral' : 
-                 tab === 'incomes' ? 'Receitas' : 
-                 tab === 'expenses' ? 'Despesas' : 
-                 tab === 'payroll' ? 'Folha' : 'Painel do Aluno'}
-              </button>
-            ))}
+          {currentUser.role !== 'student' && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {(['dashboard', 'incomes', 'expenses', 'payroll', 'student_panel'] as const).map(tab => (
+                <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest transition-all ${
+                    activeTab === tab 
+                      ? 'bg-[#4FC3F7] text-white shadow-lg scale-105' 
+                      : 'bg-white text-gray-400 hover:text-[#4FC3F7]'
+                  }`}
+                >
+                  {tab === 'dashboard' ? 'Visão Geral' : 
+                   tab === 'incomes' ? 'Receitas' : 
+                   tab === 'expenses' ? 'Despesas' : 
+                   tab === 'payroll' ? 'Folha' : 'Painel do Aluno'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {currentUser.role !== 'student' && (
+          <div className="flex gap-4">
+            <button 
+              onClick={handleGenerateTuition}
+              disabled={isGenerating}
+              className="px-6 py-4 bg-[#BA68C8] text-white rounded-[24px] font-black border-b-8 border-[#7B1FA2] shadow-xl flex items-center gap-2 hover:scale-105 transition-all"
+            >
+              <Calculator className={`w-5 h-5 ${isGenerating ? 'animate-spin' : ''}`} />
+              <span>GERAR MENSALIDADES</span>
+            </button>
+            <button className="px-6 py-4 bg-[#FF8A65] text-white rounded-[24px] font-black border-b-8 border-[#D84315] shadow-xl flex items-center gap-2 hover:scale-105 transition-all">
+              <Download className="w-5 h-5" />
+              <span>RELATÓRIO PDF</span>
+            </button>
           </div>
-        </div>
-        <div className="flex gap-4">
-          <button 
-            onClick={handleGenerateTuition}
-            disabled={isGenerating}
-            className="px-6 py-4 bg-[#BA68C8] text-white rounded-[24px] font-black border-b-8 border-[#7B1FA2] shadow-xl flex items-center gap-2 hover:scale-105 transition-all"
-          >
-            <Calculator className={`w-5 h-5 ${isGenerating ? 'animate-spin' : ''}`} />
-            <span>GERAR MENSALIDADES</span>
-          </button>
-          <button className="px-6 py-4 bg-[#FF8A65] text-white rounded-[24px] font-black border-b-8 border-[#D84315] shadow-xl flex items-center gap-2 hover:scale-105 transition-all">
-            <Download className="w-5 h-5" />
-            <span>RELATÓRIO PDF</span>
-          </button>
-        </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">

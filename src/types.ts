@@ -134,3 +134,13 @@ export interface Class {
   borderColor?: string;
   tuitionFee: number;
 }
+
+export type UserRole = 'admin' | 'teacher' | 'student';
+
+export interface User {
+  id: string;
+  name: string;
+  role: UserRole;
+  studentId?: string; // For students
+  teacherId?: string; // For teachers
+}
