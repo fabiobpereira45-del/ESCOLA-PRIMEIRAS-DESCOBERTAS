@@ -124,6 +124,7 @@ export default function App() {
       if (teacherData) {
         setTeachers(teacherData.map(t => ({
           ...t,
+          classes: t.classes || [],
           photoUrl: t.photo_url || t.photoUrl
         })) as any);
       }
@@ -1622,7 +1623,7 @@ function SubjectsView({ subjects, setSubjects }: { subjects: any[], setSubjects:
       </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {subjects.map(s => (
+        {(subjects || []).map(s => (
           <div key={s.id} className="bg-white p-8 rounded-[48px] shadow-2xl border-l-8 border-b-8 relative group hover:scale-[1.02] transition-transform" style={{ borderColor: s.border_color || '#BA68C8' }}>
             <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => { setEditingSubject(s); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
@@ -1877,7 +1878,7 @@ function TeachersView({ teachers, setTeachers, subjects }: { teachers: Teacher[]
             { key: 'classes', label: 'Turmas (separadas por vírgula)', placeholder: 'Ex: 1º Ano A, 2º Ano B' },
             { key: 'bio', label: 'Biografia / Mini Currículo', placeholder: 'Conte um pouco sobre sua trajetória...' }
           ]}
-          initialData={editingTeacher ? { ...editingTeacher, classes: editingTeacher.classes.join(', ') } : {}}
+          initialData={editingTeacher ? { ...editingTeacher, classes: (editingTeacher.classes || []).join(', ') } : {}}
           onSubmit={handleSave}
           onClose={() => { setIsModalOpen(false); setPhotoUrl(''); }}
           customContent={
