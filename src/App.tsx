@@ -1936,10 +1936,38 @@ function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void 
   const [formData, setFormData] = useState(info);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     setFormData(info);
   }, [info]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `school-logo-${Date.now()}.${fileExt}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('students') // Usando o mesmo bucket já criado
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('students')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({ ...prev, logoUrl: publicUrl }));
+    } catch (error: any) {
+      alert('Erro no upload da logo: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2036,17 +2064,31 @@ function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void 
           </h3>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Logo da Escola (URL)</label>
-            <div className="flex gap-4 items-center">
-              <div className="w-16 h-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
-                {formData.logoUrl ? <img src={formData.logoUrl} className="w-full h-full object-contain" /> : '🖼️'}
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Logo da Escola</label>
+            <div className="flex gap-4 items-center bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-3xl p-4">
+              <div className="w-20 h-20 bg-white rounded-2xl border-4 border-[#FF8A65] flex items-center justify-center overflow-hidden shadow-sm">
+                {formData.logoUrl ? (
+                  <img src={formData.logoUrl} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-3xl">🏫</span>
+                )}
               </div>
-              <input 
-                value={formData.logoUrl} 
-                onChange={e => setFormData({...formData, logoUrl: e.target.value})}
-                placeholder="https://..."
-                className="flex-1 px-5 py-3 bg-[#F5FBFF] border-2 border-[#E1F5FE] rounded-2xl font-bold outline-none focus:border-[#4FC3F7]"
-              />
+              <div className="flex-1">
+                <input 
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                  id="logo-upload"
+                />
+                <label 
+                  htmlFor="logo-upload"
+                  className={`w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${isUploading ? 'bg-gray-100 text-gray-400' : 'bg-[#FF8A65] text-white hover:brightness-95 shadow-md border-b-4 border-[#D84315]'}`}
+                >
+                  {isUploading ? 'ENVIANDO...' : 'UPLOAD DA LOGO'}
+                </label>
+                <p className="text-[10px] font-bold text-gray-300 mt-2 ml-1 italic">Dê preferência a fundos transparentes (PNG).</p>
+              </div>
             </div>
           </div>
 
