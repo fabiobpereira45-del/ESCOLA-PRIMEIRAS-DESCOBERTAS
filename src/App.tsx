@@ -510,6 +510,8 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
       turma: newStudent.class,
       parent_name: newStudent.guardian,
       parent_contact: newStudent.phone,
+      address: newStudent.address,
+      additional_phone: newStudent.additionalPhone,
       photo_url: newStudent.photoUrl,
       // Saúde
       medication: newStudent.medication,
@@ -533,11 +535,17 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
       const { error } = await supabase.from('students').update(studentData).eq('id', editingId);
       if (!error) {
         setStudents(students.map(s => s.id === editingId ? { ...s, ...studentData } as any : s));
+      } else {
+        console.error('Update error:', error);
+        alert('Erro ao atualizar: ' + error.message);
       }
     } else {
       const { data, error } = await supabase.from('students').insert(studentData).select();
       if (!error && data) {
         setStudents([...students, data[0] as any]);
+      } else {
+        console.error('Insert error:', error);
+        alert('Erro ao matricular: ' + error.message);
       }
     }
     
@@ -549,25 +557,60 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
   const handleEdit = (student: any) => {
     setNewStudent({
       ...defaultStudentState,
-      name: student.name,
-      class: student.turma,
-      guardian: student.parentName,
-      phone: student.parentContact,
+      name: student.name || '',
+      age: student.age?.toString() || '',
+      class: student.turma || '',
+      guardian: student.parent_name || student.parentName || '',
+      phone: student.parent_contact || student.parentContact || '',
       address: student.address || '',
-      additionalPhone: student.additionalPhone || '',
-      medication: student.continuousMedication || false,
-      medicationDetails: student.continuousMedicationDetails || '',
-      allergies: student.allergies || false,
-      allergiesDetails: student.allergiesDetails || '',
-      surgery: student.surgery || false,
-      surgeryDetails: student.surgeryDetails || '',
+      additionalPhone: student.additional_phone || student.additionalPhone || '',
+      medication: student.medication || false,
+      medicationDetails: student.medication_details || '',
+      allergyMed: student.allergy_med || false,
+      allergyMedDetails: student.allergy_med_details || '',
+      allergyFood: student.allergy_food || false,
+      allergyFoodDetails: student.allergy_food_details || '',
       neurodivergent: student.neurodivergent || false,
-      neurodivergentReport: student.neurodivergentReport || false,
-      gender: student.gender || 'M',
+      atipicidade: student.atipicidade || '',
+      report: student.has_report || student.report || false,
+      disability: student.disability || false,
+      disabilityDetails: student.disability_details || '',
+      surgery: student.surgery || false,
+      surgeryDetails: student.surgery_details || '',
+      gender: (student.gender as 'M' | 'F') || 'M',
       photoUrl: student.photo_url || student.photoUrl || ''
     });
     setEditingId(student.id);
     setIsRegistering(true);
+  };
+
+  const [isUploading, setIsUploading] = useState(false);
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('students')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('students')
+        .getPublicUrl(filePath);
+
+      setNewStudent(prev => ({ ...prev, photoUrl: publicUrl }));
+    } catch (error: any) {
+      alert('Erro no upload: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -825,13 +868,32 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Link da Foto (Opcional)</label>
-                      <input 
-                        value={newStudent.photoUrl}
-                        onChange={e => setNewStudent({...newStudent, photoUrl: e.target.value})}
-                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
-                        placeholder="https://..."
-                      />
+                      <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Foto do Pequeno</label>
+                      <div className="flex gap-4 items-center bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] p-4">
+                        <div className="w-16 h-16 bg-white rounded-2xl border-4 border-[#FF8A65] flex items-center justify-center overflow-hidden shadow-sm">
+                          {newStudent.photoUrl ? (
+                            <img src={newStudent.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-2xl">📸</span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <input 
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                            id="photo-upload"
+                          />
+                          <label 
+                            htmlFor="photo-upload"
+                            className={`w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${isUploading ? 'bg-gray-100 text-gray-400' : 'bg-[#FF8A65] text-white hover:brightness-95 border-b-4 border-[#D84315]'}`}
+                          >
+                            {isUploading ? 'ENVIANDO...' : 'UPLOAD DA FOTO'}
+                          </label>
+                          <p className="text-[10px] font-bold text-gray-400 mt-2 ml-1">Tamanho máx: 2MB</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
