@@ -54,7 +54,7 @@ const colors = {
   white: '#FFFFFF',
 };
 
-type View = 'dashboard' | 'students' | 'teachers' | 'grades' | 'communication' | 'library' | 'financial' | 'carne' | 'ead' | 'inventory' | 'photos' | 'attendance' | 'classes' | 'directive' | 'settings';
+type View = 'dashboard' | 'students' | 'classes' | 'subjects' | 'attendance' | 'teachers' | 'grades' | 'communication' | 'library' | 'financial' | 'carne' | 'ead' | 'inventory' | 'photos' | 'directive' | 'settings';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -63,6 +63,7 @@ export default function App() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [occurrences, setOccurrences] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
   const [schoolInfo, setSchoolInfo] = useState({
     name: 'Escola Primeiras Descobertas (EPD)',
     address: 'Rua das Descobertas, 123',
@@ -151,6 +152,9 @@ export default function App() {
       const { data: occData } = await supabase.from('student_occurrences').select('*').order('date', { ascending: false });
       if (occData) setOccurrences(occData as any);
 
+      const { data: subData } = await supabase.from('subjects').select('*');
+      if (subData) setSubjects(subData as any);
+
       const { data: schoolData } = await supabase.from('school_info').select('*').single();
       if (schoolData) {
         setSchoolInfo({
@@ -169,6 +173,7 @@ export default function App() {
     { id: 'dashboard', label: 'Visão Geral', icon: Home, color: '#4FC3F7', emoji: '🏠' },
     { id: 'students', label: 'Alunos', icon: Users, color: '#FF8A65', emoji: '🎒' },
     { id: 'classes', label: 'Turmas', icon: Users, color: '#4FC3F7', emoji: '🏫' },
+    { id: 'subjects', label: 'Disciplinas', icon: BookOpen, color: '#BA68C8', emoji: '📚' },
     { id: 'attendance', label: 'Chamada', icon: ClipboardList, color: '#81C784', emoji: '📝' },
     { id: 'teachers', label: 'Professores', icon: GraduationCap, color: '#FFF176', emoji: '🍎' },
     { id: 'grades', label: 'Notas', icon: CheckCircle2, color: '#FF5252', emoji: '⭐' },
@@ -284,6 +289,7 @@ export default function App() {
               transition={{ duration: 0.2 }}
             >
               {currentView === 'dashboard' && <Dashboard students={students} announcements={announcements} financialRecords={financialRecords} />}
+              {currentView === 'subjects' && <SubjectsView subjects={subjects} setSubjects={setSubjects} />}
               {currentView === 'attendance' && <AttendanceView students={students} classes={classes} />}
               {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
@@ -1526,6 +1532,119 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function SubjectsView({ subjects, setSubjects }: { subjects: any[], setSubjects: (s: any[]) => void }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSubject, setEditingSubject] = useState<any>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleSave = async (data: any) => {
+    const subjectData = { 
+      name: data.name,
+      description: data.description,
+      icon: data.icon || '📚',
+      color: data.color || '#E1F5FE',
+      border_color: data.border || data.border_color || '#BA68C8'
+    };
+
+    if (editingSubject) {
+      const { error } = await supabase.from('subjects').update(subjectData).eq('id', editingSubject.id);
+      if (!error) {
+        setSubjects(subjects.map(s => s.id === editingSubject.id ? { ...s, ...subjectData } : s));
+      }
+    } else {
+      const { data: newData, error } = await supabase.from('subjects').insert(subjectData).select();
+      if (!error && newData) {
+        setSubjects([...subjects, newData[0]]);
+      }
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('subjects').delete().eq('id', id);
+    if (!error) {
+      setSubjects(subjects.filter(s => s.id !== id));
+    }
+    setDeletingId(null);
+  };
+
+  return (
+    <div className="space-y-10">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-[#6A1B9A]">Disciplinas 📚</h2>
+          <p className="text-[#546E7A] font-bold">Gerencie o conteúdo programático da escola</p>
+        </div>
+        <button 
+          onClick={() => { setEditingSubject(null); setIsModalOpen(true); }}
+          className="px-8 py-4 bg-[#BA68C8] text-white rounded-[32px] font-black border-b-8 border-[#7B1FA2] shadow-xl flex items-center gap-3 transform hover:scale-105 transition-all"
+        >
+          <PlusCircle className="w-6 h-6" />
+          <span>NOVA DISCIPLINA</span>
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <MagicFormModal 
+            title={editingSubject ? "Editar Disciplina" : "Nova Disciplina"}
+            icon="📚"
+            fields={[
+              { key: 'name', label: 'Nome da Disciplina', placeholder: 'Ex: Matemática Criativa' },
+              { key: 'description', label: 'Descrição / Objetivo', placeholder: 'Ex: Foco em raciocínio lógico...' },
+              { key: 'icon', label: 'Ícone (Emoji)', placeholder: 'Ex: 🧪' },
+              { key: 'color', label: 'Cor de Fundo', type: 'color' },
+              { key: 'border', label: 'Cor da Borda', type: 'color' }
+            ]}
+            initialData={editingSubject}
+            onSubmit={handleSave}
+            onClose={() => setIsModalOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deletingId && (
+          <ConfirmationModal 
+            title="Excluir Disciplina?"
+            message="Tem certeza que deseja remover esta disciplina?"
+            confirmText="SIM, EXCLUIR"
+            cancelText="CANCELAR"
+            onConfirm={() => handleDelete(deletingId)}
+            onClose={() => setDeletingId(null)}
+            color="#FF5252"
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {subjects.map(s => (
+          <div key={s.id} className="bg-white p-8 rounded-[48px] shadow-2xl border-l-8 border-b-8 relative group hover:scale-[1.02] transition-transform" style={{ borderColor: s.border_color || '#BA68C8' }}>
+            <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => { setEditingSubject(s); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
+              <button onClick={() => setDeletingId(s.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer"><Trash2 className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl shadow-inner" style={{ backgroundColor: s.color || '#F3E5F5' }}>
+                {s.icon || '📚'}
+              </div>
+              <div>
+                <h4 className="text-2xl font-black text-[#4A148C]">{s.name}</h4>
+                <p className="text-gray-400 font-bold text-xs uppercase tracking-tighter">CONTEÚDO</p>
+              </div>
+            </div>
+            
+            <p className="mt-6 text-[#546E7A] font-medium text-sm leading-relaxed italic">
+              {s.description || 'Sem descrição definida para esta disciplina.'}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
