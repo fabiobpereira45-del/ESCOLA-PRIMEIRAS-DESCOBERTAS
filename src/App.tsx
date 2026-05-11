@@ -279,7 +279,7 @@ export default function App() {
               {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView />}
-              {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} />}
+              {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} />}
               {currentView === 'classes' && <ClassesView classes={classes} setClasses={setClasses} students={students} />}
               {currentView === 'library' && <LibraryView books={libraryBooks} setBooks={setLibraryBooks} />}
               {currentView === 'financial' && <FinanceView records={financialRecords} setRecords={setFinancialRecords} />}
@@ -472,7 +472,7 @@ function Dashboard({ students, announcements, financialRecords }: { students: St
   );
 }
 
-function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any, searchQuery: string }) {
+function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes }: { students: Student[], setStudents: (s: Student[]) => void, schoolInfo: any, searchQuery: string, classes: any[] }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -492,9 +492,11 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
     name: '', age: '', class: '', guardian: '', 
     address: '', phone: '', additionalPhone: '', 
     medication: false, medicationDetails: '', 
-    allergies: false, allergiesDetails: '', 
-    surgery: false, surgeryDetails: '', 
-    neurodivergent: false, neurodivergentReport: false,
+    allergyMed: false, allergyMedDetails: '',
+    allergyFood: false, allergyFoodDetails: '',
+    neurodivergent: false, atipicidade: '', report: false,
+    disability: false, disabilityDetails: '',
+    surgery: false, surgeryDetails: '',
     gender: 'M' as 'M' | 'F',
     photoUrl: ''
   };
@@ -508,7 +510,23 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
       turma: newStudent.class,
       parent_name: newStudent.guardian,
       parent_contact: newStudent.phone,
-      photo_url: newStudent.photoUrl
+      photo_url: newStudent.photoUrl,
+      // Saúde
+      medication: newStudent.medication,
+      medication_details: newStudent.medicationDetails,
+      allergy_med: newStudent.allergyMed,
+      allergy_med_details: newStudent.allergyMedDetails,
+      allergy_food: newStudent.allergyFood,
+      allergy_food_details: newStudent.allergyFoodDetails,
+      neurodivergent: newStudent.neurodivergent,
+      atipicidade: newStudent.atipicidade,
+      has_report: newStudent.report,
+      disability: newStudent.disability,
+      disability_details: newStudent.disabilityDetails,
+      surgery: newStudent.surgery,
+      surgery_details: newStudent.surgeryDetails,
+      gender: newStudent.gender,
+      age: parseInt(newStudent.age as string) || 0
     };
     
     if (editingId) {
@@ -732,13 +750,15 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-black text-[#D84315] uppercase tracking-widest ml-1">Turma</label>
-                      <input 
+                      <select 
                         required
                         value={newStudent.class}
                         onChange={e => setNewStudent({...newStudent, class: e.target.value})}
-                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
-                        placeholder="Ex: 2º Ano A"
-                      />
+                        className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all appearance-none"
+                      >
+                        <option value="">Selecione uma turma...</option>
+                        {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -812,6 +832,88 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery }: { stud
                         className="w-full px-6 py-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px] font-bold focus:border-[#FF8A65] outline-none transition-all"
                         placeholder="https://..."
                       />
+                    </div>
+                  </div>
+
+                  {/* Saúde e Cuidados */}
+                  <div className="pt-8 pb-4 border-t-4 border-dashed border-[#E1F5FE]">
+                    <h4 className="text-2xl font-black text-[#01579B] flex items-center gap-3">
+                      <span className="bg-[#E1F5FE] p-2 rounded-xl text-lg">🩺</span> Saúde e Cuidados
+                    </h4>
+                    <p className="text-gray-400 font-bold text-xs mt-1 ml-12 uppercase tracking-tighter">Informações importantes para a segurança do aluno</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
+                    <div className="bg-[#FFF8F1] p-6 rounded-[40px] border-4 border-[#FFE0B2] space-y-4 shadow-sm">
+                      <label className="flex items-center gap-3 cursor-pointer font-black text-[#E65100] uppercase text-xs">
+                        <input type="checkbox" checked={newStudent.medication} onChange={e => setNewStudent({...newStudent, medication: e.target.checked})} className="w-6 h-6 rounded-lg accent-[#FB8C00]" />
+                        Medicamento Contínuo?
+                      </label>
+                      {newStudent.medication && (
+                        <input required value={newStudent.medicationDetails} onChange={e => setNewStudent({...newStudent, medicationDetails: e.target.value})} className="w-full px-4 py-3 bg-white border-2 border-[#FFE0B2] rounded-xl font-bold text-sm outline-none focus:border-[#FB8C00]" placeholder="Qual e dosagem?" />
+                      )}
+                    </div>
+
+                    <div className="bg-[#F3E5F5] p-6 rounded-[40px] border-4 border-[#E1BEE7] space-y-4 shadow-sm">
+                      <label className="flex items-center gap-3 cursor-pointer font-black text-[#4A148C] uppercase text-xs">
+                        <input type="checkbox" checked={newStudent.neurodivergent} onChange={e => setNewStudent({...newStudent, neurodivergent: e.target.checked})} className="w-6 h-6 rounded-lg accent-[#8E24AA]" />
+                        Neurodivergente?
+                      </label>
+                      {newStudent.neurodivergent && (
+                        <div className="space-y-3">
+                          <select required value={newStudent.atipicidade} onChange={e => setNewStudent({...newStudent, atipicidade: e.target.value})} className="w-full px-4 py-3 bg-white border-2 border-[#E1BEE7] rounded-xl font-bold text-sm outline-none focus:border-[#8E24AA]">
+                            <option value="">Qual a atipicidade?</option>
+                            <option value="TEA">TEA (Autismo)</option>
+                            <option value="TOD">TOD (Opositor)</option>
+                            <option value="TDAH">TDAH</option>
+                            <option value="Outro">Outro</option>
+                          </select>
+                          <label className="flex items-center gap-2 text-[10px] font-black text-[#8E24AA] ml-1">
+                            <input type="checkbox" checked={newStudent.report} onChange={e => setNewStudent({...newStudent, report: e.target.checked})} className="w-4 h-4 accent-[#8E24AA]" />
+                            POSSUI LAUDO?
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-[#E8F5E9] p-6 rounded-[40px] border-4 border-[#C8E6C9] space-y-4 shadow-sm">
+                      <label className="flex items-center gap-3 cursor-pointer font-black text-[#1B5E20] uppercase text-xs">
+                        <input type="checkbox" checked={newStudent.allergyMed} onChange={e => setNewStudent({...newStudent, allergyMed: e.target.checked})} className="w-6 h-6 rounded-lg accent-[#43A047]" />
+                        Alergia a Medicamento?
+                      </label>
+                      {newStudent.allergyMed && (
+                        <input required value={newStudent.allergyMedDetails} onChange={e => setNewStudent({...newStudent, allergyMedDetails: e.target.value})} className="w-full px-4 py-3 bg-white border-2 border-[#C8E6C9] rounded-xl font-bold text-sm outline-none focus:border-[#43A047]" placeholder="Quais?" />
+                      )}
+                    </div>
+
+                    <div className="bg-[#FFFDE7] p-6 rounded-[40px] border-4 border-[#FFF59D] space-y-4 shadow-sm">
+                      <label className="flex items-center gap-3 cursor-pointer font-black text-[#F57F17] uppercase text-xs">
+                        <input type="checkbox" checked={newStudent.allergyFood} onChange={e => setNewStudent({...newStudent, allergyFood: e.target.checked})} className="w-6 h-6 rounded-lg accent-[#FBC02D]" />
+                        Alergia Alimentar?
+                      </label>
+                      {newStudent.allergyFood && (
+                        <input required value={newStudent.allergyFoodDetails} onChange={e => setNewStudent({...newStudent, allergyFoodDetails: e.target.value})} className="w-full px-4 py-3 bg-white border-2 border-[#FFF59D] rounded-xl font-bold text-sm outline-none focus:border-[#FBC02D]" placeholder="Quais?" />
+                      )}
+                    </div>
+
+                    <div className="bg-[#E0F7FA] p-6 rounded-[40px] border-4 border-[#B2EBF2] space-y-4 shadow-sm">
+                      <label className="flex items-center gap-3 cursor-pointer font-black text-[#006064] uppercase text-xs">
+                        <input type="checkbox" checked={newStudent.disability} onChange={e => setNewStudent({...newStudent, disability: e.target.checked})} className="w-6 h-6 rounded-lg accent-[#00BCD4]" />
+                        Porta Deficiência?
+                      </label>
+                      {newStudent.disability && (
+                        <input required value={newStudent.disabilityDetails} onChange={e => setNewStudent({...newStudent, disabilityDetails: e.target.value})} className="w-full px-4 py-3 bg-white border-2 border-[#B2EBF2] rounded-xl font-bold text-sm outline-none focus:border-[#00BCD4]" placeholder="Qual?" />
+                      )}
+                    </div>
+
+                    <div className="bg-[#FCE4EC] p-6 rounded-[40px] border-4 border-[#F8BBD0] space-y-4 shadow-sm">
+                      <label className="flex items-center gap-3 cursor-pointer font-black text-[#880E4F] uppercase text-xs">
+                        <input type="checkbox" checked={newStudent.surgery} onChange={e => setNewStudent({...newStudent, surgery: e.target.checked})} className="w-6 h-6 rounded-lg accent-[#D81B60]" />
+                        Fez alguma Cirurgia?
+                      </label>
+                      {newStudent.surgery && (
+                        <input required value={newStudent.surgeryDetails} onChange={e => setNewStudent({...newStudent, surgeryDetails: e.target.value})} className="w-full px-4 py-3 bg-white border-2 border-[#F8BBD0] rounded-xl font-bold text-sm outline-none focus:border-[#D81B60]" placeholder="Qual e quando?" />
+                      )}
                     </div>
                   </div>
 
