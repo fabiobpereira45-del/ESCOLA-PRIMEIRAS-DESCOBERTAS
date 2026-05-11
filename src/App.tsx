@@ -662,15 +662,14 @@ function StudentsView({ students, setStudents, schoolInfo, searchQuery, classes 
     }
     
     doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text(schoolInfo.name.toUpperCase(), textX, 18, { align: textAlign });
+    doc.text(`${schoolInfo.address}`, textX, 18, { align: textAlign });
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${schoolInfo.address}`, textX, 26, { align: textAlign });
-    doc.text(`Tel: ${schoolInfo.phone} | CNPJ: ${schoolInfo.cnpj}`, textX, 32, { align: textAlign });
-    doc.text(`Email: ${schoolInfo.email}`, textX, 38, { align: textAlign });
+    doc.text(`Tel: ${schoolInfo.phone} | CNPJ: ${schoolInfo.cnpj}`, textX, 26, { align: textAlign });
+    doc.text(`Email: ${schoolInfo.email}`, textX, 34, { align: textAlign });
 
     // Title
     doc.setTextColor(1, 87, 155); // Dark blue
