@@ -1936,8 +1936,7 @@ function SettingsView({ info, setInfo }: { info: any, setInfo: (i: any) => void 
         logo_url: formData.logoUrl,
         primary_color: formData.primaryColor,
         passing_grade: formData.passingGrade,
-        contract_template: formData.contractTemplate,
-        updated_at: new Date().toISOString()
+        contract_template: formData.contractTemplate
       };
 
       const { error } = await supabase.from('school_info').upsert({ 
