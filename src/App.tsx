@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   GraduationCap, 
@@ -29,7 +29,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Student, Teacher, Announcement, DirectiveMember } from './types';
+import { Student, Teacher, Announcement, DirectiveMember, FinancialRecord } from './types';
 import FinanceView from './components/FinanceView';
 import LibraryView from './components/LibraryView';
 import GradesView from './components/GradesView';
@@ -137,7 +137,7 @@ export default function App() {
       if (finData) setFinancialRecords(finData as any);
 
       const { data: bookData } = await supabase.from('books').select('*');
-      if (bookData) setBooks(bookData as any);
+      if (bookData) setLibraryBooks(bookData as any);
 
       const { data: dirData } = await supabase.from('directive').select('*');
       if (dirData) setDirectiveMembers(dirData as any);
@@ -1569,130 +1569,6 @@ const AlertCircle = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
 );
 
-function ClassesView({ classes, setClasses }: { classes: any[], setClasses: (c: any[]) => void }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingClass, setEditingClass] = useState<any | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsModalOpen(false);
-        setDeletingId(null);
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
-
-  const handleSave = async (data: any) => {
-    if (editingClass) {
-      const { error } = await supabase.from('classes').update(data).eq('id', editingClass.id);
-      if (!error) {
-        setClasses(classes.map(c => c.id === editingClass.id ? { ...c, ...data } : c));
-      }
-    } else {
-      const colors = ['#FF8A65', '#4FC3F7', '#FFF176', '#81C784', '#FF5252'];
-      const borders = ['#D84315', '#0288D1', '#FBC02D', '#388E3C', '#D50000'];
-      const icons = ['🦁', '🐳', '🦊', '🐸', '🐞', '🦉'];
-      const randomIndex = Math.floor(Math.random() * colors.length);
-      
-      const classData = { 
-        ...data, 
-        color: colors[randomIndex],
-        border: borders[randomIndex],
-        icon: icons[Math.floor(Math.random() * icons.length)]
-      };
-      const { data: newData, error } = await supabase.from('classes').insert(classData).select();
-      if (!error && newData) {
-        setClasses([...classes, newData[0] as any]);
-      }
-    }
-    setIsModalOpen(false);
-  };
-
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('classes').delete().eq('id', id);
-    if (!error) {
-      setClasses(classes.filter(c => c.id !== id));
-    }
-    setDeletingId(null);
-  };
-
-  return (
-    <div className="space-y-10">
-      {isModalOpen && (
-        <MagicFormModal 
-          title={editingClass ? "Editar Turma" : "Nova Turma"}
-          icon="🏫"
-          fields={[
-            { key: 'name', label: 'Nome da Turma', placeholder: 'Ex: 1º Ano C' },
-            { key: 'teacher', label: 'Professor Responsável', placeholder: 'Ex: Prof. Silva' },
-            { key: 'students', label: 'Quantidade de Alunos', type: 'number', placeholder: 'Ex: 20' }
-          ]}
-          initialData={editingClass || {}}
-          onSubmit={handleSave}
-          onClose={() => setIsModalOpen(false)}
-        />
-      )}
-      <AnimatePresence>
-        {deletingId && (
-          <ConfirmationModal 
-            title="Remover Turma?"
-            message="Tem certeza que deseja dissolver esta turma de aventureiros?"
-            confirmText="SIM, REMOVER"
-            cancelText="NÃO, MANTER"
-            onConfirm={() => handleDelete(deletingId)}
-            onClose={() => setDeletingId(null)}
-            color="#FF5252"
-          />
-        )}
-      </AnimatePresence>
-      <div className="flex items-end justify-between">
-        <div>
-          <h2 className="text-4xl font-black text-[#01579B]">Nossas Turmas 🏫</h2>
-          <p className="text-[#546E7A] font-bold">As equipes de aventureiros da escola!</p>
-        </div>
-        <button onClick={() => { setEditingClass(null); setIsModalOpen(true); }} className="px-8 py-4 bg-[#4FC3F7] text-white rounded-[32px] font-black border-b-8 border-[#0288D1] shadow-xl flex items-center gap-2 hover:scale-105 transition-all">
-          <PlusCircle className="w-6 h-6" />
-          <span>NOVA TURMA</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {classes.map(c => (
-          <div key={c.id} className="bg-white p-8 rounded-[48px] shadow-2xl border-b-8 border-r-8 relative group hover:scale-[1.02] transition-transform" style={{ borderColor: c.color }}>
-            <div className="absolute top-4 right-4 flex flex-col gap-2 z-30">
-                 <button onClick={() => { setEditingClass(c); setIsModalOpen(true); }} className="w-10 h-10 bg-[#FFF176] rounded-full flex items-center justify-center text-lg border-b-4 border-[#FBC02D] shadow-sm hover:scale-110 transition-transform cursor-pointer">✏️</button>
-                 <button onClick={() => setDeletingId(c.id)} className="w-10 h-10 bg-[#FF5252] rounded-full flex items-center justify-center text-white border-b-4 border-[#D50000] shadow-sm hover:scale-110 transition-transform cursor-pointer">
-                   <Trash2 className="w-5 h-5" />
-                 </button>
-            </div>
-            <div className="absolute top-6 left-6 w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-inner border-4 border-white" style={{ backgroundColor: c.color + '33' }}>
-               {c.icon}
-            </div>
-            <div className="relative pt-12 flex flex-col items-center">
-              <h3 className="text-3xl font-black text-[#5D4037] mb-2">{c.name}</h3>
-              <p className="font-bold text-gray-500 mb-6 uppercase tracking-widest text-xs">Prof: {c.teacher}</p>
-              
-              <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-3xl border-2 border-gray-100 mb-6 w-full">
-                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm border-2 border-gray-100">🎒</div>
-                 <div>
-                   <p className="text-2xl font-black text-[#01579B] leading-none">{c.students}</p>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alunos</p>
-                 </div>
-              </div>
-
-              <button className="w-full py-4 text-white rounded-[24px] font-black border-b-6 shadow-md transition-all active:translate-y-1" style={{ backgroundColor: c.color, borderColor: c.border }}>
-                 VER DETALHES
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function DirectiveView({ members, setMembers }: { members: DirectiveMember[], setMembers: (m: DirectiveMember[]) => void }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
