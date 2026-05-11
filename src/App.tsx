@@ -1402,7 +1402,7 @@ function ClassesView({ classes, setClasses, students }: { classes: any[], setCla
             fields={[
               { key: 'name', label: 'Nome da Turma', placeholder: 'Ex: G3 - Matutino' },
               { key: 'teacher', label: 'Professor(a) Responsável', placeholder: 'Ex: Profª. Márcia' },
-              { key: 'icon', label: 'Ícone (Emoji)', placeholder: 'Ex: 🦁' },
+              { key: 'icon', label: 'Ícone (Emoji)', type: 'emoji' },
               { key: 'color', label: 'Cor de Fundo', type: 'color' },
               { key: 'border', label: 'Cor da Borda', type: 'color' }
             ]}
@@ -1596,7 +1596,7 @@ function SubjectsView({ subjects, setSubjects }: { subjects: any[], setSubjects:
             fields={[
               { key: 'name', label: 'Nome da Disciplina', placeholder: 'Ex: Matemática Criativa' },
               { key: 'description', label: 'Descrição / Objetivo', placeholder: 'Ex: Foco em raciocínio lógico...' },
-              { key: 'icon', label: 'Ícone (Emoji)', placeholder: 'Ex: 🧪' },
+              { key: 'icon', label: 'Ícone (Emoji)', type: 'emoji' },
               { key: 'color', label: 'Cor de Fundo', type: 'color' },
               { key: 'border', label: 'Cor da Borda', type: 'color' }
             ]}
@@ -2483,6 +2483,19 @@ function MagicFormModal({ title, icon, fields, initialData, onSubmit, onClose }:
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+              ) : f.type === 'emoji' ? (
+                <div className="grid grid-cols-6 gap-3 p-4 bg-[#F5FBFF] border-4 border-[#E1F5FE] rounded-[24px]">
+                  {['📚', '🧪', '🎨', '🧩', '⚽', '🎵', '📐', '🌍', '🧬', '💻', '🎭', '🦁', '🐘', 'Rex', '🐥', '🐸', '🐞', '🍎', '🖍️', '🏫', '👨‍🏫', '👩‍🏫', '📖', '✏️'].map(emoji => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setFormData({...formData, [f.key]: emoji})}
+                      className={`w-full aspect-square bg-white rounded-xl border-4 flex items-center justify-center text-2xl transition-all hover:scale-110 ${formData[f.key] === emoji ? 'border-[#4FC3F7] shadow-inner' : 'border-transparent shadow-sm'}`}
+                    >
+                      {emoji === 'Rex' ? '🦖' : emoji}
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <input 
                   required={f.required !== false}
