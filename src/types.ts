@@ -144,3 +144,28 @@ export interface User {
   studentId?: string; // For students
   teacherId?: string; // For teachers
 }
+
+export interface Question {
+  id: string;
+  created_at: string;
+  subject: string;
+  turma: string;
+  content: string;
+  type: string;
+  difficulty: 'fácil' | 'média' | 'difícil';
+  options?: string[];
+  correctAnswer?: string;
+  bnccCode?: string;
+  imageDescription?: string;
+}
+
+export interface Exam {
+  id: string;
+  created_at: string;
+  title: string;
+  subject: string;
+  turma: string;
+  period: string;
+  questionsIds: string[];
+  contentJson?: any;
+}

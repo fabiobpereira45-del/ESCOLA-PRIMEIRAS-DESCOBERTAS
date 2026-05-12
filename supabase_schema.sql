@@ -187,6 +187,33 @@ CREATE TABLE IF NOT EXISTS public.payroll (
     status TEXT DEFAULT 'draft' -- draft, paid
 );
 
+-- 16. Tabela de Questões (questions)
+CREATE TABLE IF NOT EXISTS public.questions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    subject TEXT NOT NULL,
+    turma TEXT NOT NULL, -- G1, G2, G3, 1º, 2º, 3º, 4º, 5º ano
+    content TEXT NOT NULL, -- Enunciado
+    type TEXT NOT NULL, -- objetiva, dissertativa, ligar, completar, etc.
+    difficulty TEXT DEFAULT 'média', -- fácil, média, difícil
+    options JSONB, -- Para questões de múltipla escolha
+    correct_answer TEXT,
+    bncc_code TEXT, -- Habilidade BNCC
+    image_description TEXT -- Descrição para onde inserir imagem
+);
+
+-- 17. Tabela de Provas Geradas (exams)
+CREATE TABLE IF NOT EXISTS public.exams (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    title TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    turma TEXT NOT NULL,
+    period TEXT, -- 1º Bimestre, etc.
+    questions_ids UUID[], -- Array de IDs das questões selecionadas
+    content_json JSONB -- Conteúdo completo caso gerado por IA ou cache
+);
+
 -- ==========================================
 -- DESABILITAR RLS (Para permitir salvamento com chave anon)
 -- ==========================================
@@ -207,6 +234,8 @@ ALTER TABLE public.student_occurrences DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_info DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payroll DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.questions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exams DISABLE ROW LEVEL SECURITY;
 
 -- Opcional: Se preferir MANTER o RLS ativo mas permitir acesso total (menos seguro, mas funciona):
 -- CREATE POLICY "Permitir tudo" ON public.announcements FOR ALL USING (true) WITH CHECK (true);

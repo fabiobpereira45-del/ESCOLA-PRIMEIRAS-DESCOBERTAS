@@ -26,7 +26,8 @@ import {
   Printer,
   Trash2,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Student, Teacher, Announcement, DirectiveMember, FinancialRecord, User, Class } from './types';
@@ -46,6 +47,7 @@ import InventoryView from './components/InventoryView';
 import PhotosView from './components/PhotosView';
 import DirectiveView from './components/DirectiveView';
 import SettingsView from './components/SettingsView';
+import ExamsView from './components/ExamsView';
 import { supabase } from './lib/supabase';
 
 // Theme Colors
@@ -64,7 +66,7 @@ const colors = {
   white: '#FFFFFF',
 };
 
-type View = 'dashboard' | 'students' | 'classes' | 'subjects' | 'attendance' | 'teachers' | 'grades' | 'communication' | 'library' | 'financial' | 'carne' | 'ead' | 'inventory' | 'photos' | 'directive' | 'settings';
+type View = 'dashboard' | 'students' | 'classes' | 'subjects' | 'attendance' | 'teachers' | 'grades' | 'exams' | 'communication' | 'library' | 'financial' | 'carne' | 'ead' | 'inventory' | 'photos' | 'directive' | 'settings';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -155,6 +157,7 @@ export default function App() {
     { id: 'attendance', label: 'Chamada', icon: ClipboardList, color: '#81C784', emoji: '📝' },
     { id: 'teachers', label: 'Professores', icon: GraduationCap, color: '#FFF176', emoji: '🍎' },
     { id: 'grades', label: 'Notas', icon: CheckCircle2, color: '#FF5252', emoji: '⭐' },
+    { id: 'exams', label: 'Provas/IA', icon: Brain, color: '#FF8A65', emoji: '🧠' },
     { id: 'communication', label: 'Recados', icon: MessageSquare, color: '#FF8A65', emoji: '📌' },
     { id: 'library', label: 'Biblioteca', icon: Library, color: '#4FC3F7', emoji: '📚' },
     { id: 'financial', label: 'Financeiro', icon: DollarSign, color: '#FFF176', emoji: '💰' },
@@ -170,7 +173,7 @@ export default function App() {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
     if (currentUser.role === 'teacher') {
-      return ['dashboard', 'attendance', 'grades', 'communication', 'library', 'photos', 'directive'].includes(item.id);
+      return ['dashboard', 'attendance', 'grades', 'exams', 'communication', 'library', 'photos', 'directive'].includes(item.id);
     }
     if (currentUser.role === 'student') {
       return ['dashboard', 'ead', 'grades', 'library', 'communication'].includes(item.id);
@@ -301,6 +304,7 @@ export default function App() {
               {currentView === 'teachers' && <TeachersView teachers={teachers} setTeachers={setTeachers} subjects={subjects} />}
               {currentView === 'communication' && <CommunicationView announcements={announcements} setAnnouncements={setAnnouncements} />}
               {currentView === 'grades' && <GradesView currentUser={currentUser} />}
+              {currentView === 'exams' && <ExamsView currentUser={currentUser} />}
 
               {currentView === 'students' && <StudentsView students={students} setStudents={setStudents} schoolInfo={schoolInfo} searchQuery={searchQuery} classes={classes} occurrences={occurrences} setOccurrences={setOccurrences} />}
               {currentView === 'classes' && <ClassesView classes={classes} setClasses={setClasses} students={students} />}
